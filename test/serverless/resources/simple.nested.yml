@@ -1,2 +1,2 @@
-  environment:
-    ENV: ${opt:stage}
+environment:
+  ENV: ${opt:stage}

@@ -13,6 +13,7 @@
     "dist"
   ],
   "dependencies": {
+    "yaml-boost": "^1.8.2"
   },
   "devDependencies": {
     "@types/jest": "^23.3.12",
