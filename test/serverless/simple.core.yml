@@ -1,6 +1,7 @@
 service: webhookService
-  provider:
-    name: ${custom:name}
-    stage: ${opt:stage}
-    env: ${opt:stage}
-${file:resources/simple.nested.yml}(foo=bar,stage=test)
+provider:
+  name: ${opt:nonExistingParam}-${self:custom.name}
+  stage: ${opt:stage}
+  env: ${opt:stage}
+  ${tfile:resources/simple.nested.yml:foo=bar,stage=test}
+  ${tfile:resources/simple.nested2.yml}
