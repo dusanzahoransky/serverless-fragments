@@ -1,0 +1,1 @@
+export { YamlTemplate } from './YamlTemplate';
