@@ -26,7 +26,7 @@ export class YamlTemplate {
         //does not support nested constructions ${opt:foo-${opt:bar}}   - will only match bar parameter
         const paramRegexpStr = '\\${(opt|self):([^}]+)}';
 
-        const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
+        const paramRegexp = new RegExp(paramRegexpStr, 'g');
 
         content = content.replace(paramRegexp, (match) => {
             const paramName = new RegExp(paramRegexpStr).exec(match)[2];  //stateful RegExps, so need new instance
@@ -53,15 +53,8 @@ export class YamlTemplate {
         const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
 
         content = content.replace(paramRegexp, (match) => {
-            const matchParts = new RegExp(paramRegexpStr).exec(match);  //stateful RegExps, so need new instance
-
-            const indentation = matchParts[1];
-            const filePath = matchParts[2];
-            const params = matchParts[4] ? matchParts[4] : '';  //optional params, group 4 can be undefined
-
-            const paramMap = this.toMap(params);
-
-            return this.loadFile(join(dir, filePath), paramMap, indentation)
+            const [, indentation, filePath, , params] = new RegExp(paramRegexpStr).exec(match);  //stateful RegExps, so need new instance
+            return this.loadFile(join(dir, filePath), this.toMap(params), indentation)
         });
         return content;
     }
@@ -71,13 +64,13 @@ export class YamlTemplate {
      * E.g. 'foo =bar,stage = test' will become a Map { '(foo' => 'bar', 'stage' => 'test)' }
      * @param params comma separated params with name and value
      */
-    public toMap(params: string): Map<string, string> {
+    public toMap(params: string = ''): Map<string, string> {
         const paramMap = new Map();
 
         params.split(",").forEach(nameValuePair => {
-            const nameValue = nameValuePair.split("=");
-            if (nameValue.length == 2) {
-                paramMap.set(nameValue[0].trim(), nameValue[1].trim());
+            const [name, value] = nameValuePair.split("=");
+            if (name && value) {
+                paramMap.set(name.trim(), value.trim());
             }
         });
 
@@ -90,7 +83,7 @@ export class YamlTemplate {
 
         let fileContent = readFileSync(filePath, 'utf8');
         fileContent = fileContent.split('\n')
-            .map(value => indentation+value)
+            .map(value => indentation + value)
             .join('\n');
 
         return this.evaluate(dirname(filePath), fileContent, params);
