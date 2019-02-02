@@ -12,7 +12,7 @@ describe("Template resolving", () => {
 
     it("should replace multiple vars at the same line", async () => {
 
-        let resolved = new YamlTemplate().replaceVars(
+        let resolved = new YamlTemplate().resolveVars(
             `name: \${opt:nonExistingParam}-\${self:custom.name}`,
             new Map([['custom.name', 'foo']]));
 
@@ -22,7 +22,7 @@ describe("Template resolving", () => {
     it("should replace parametrized file with content", async () => {
 
         const filePath = join(__dirname, 'serverless/simple.core.yml');
-        let resolved = new YamlTemplate().replaceFiles(readFileSync(filePath, 'utf8'), dirname(filePath));
+        let resolved = new YamlTemplate().resolveFiles(readFileSync(filePath, 'utf8'), dirname(filePath));
         expect(resolved).toBe(
 `service: webhookService
 provider:
@@ -38,7 +38,7 @@ provider:
 
     it("should replace custom and opt", async () => {
 
-        let resolved = new YamlTemplate().replaceVars(
+        let resolved = new YamlTemplate().resolveVars(
             `service: webhookService
                 provider:
                   name: \${self:custom.name}

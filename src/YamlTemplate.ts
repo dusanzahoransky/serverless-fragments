@@ -1,16 +1,14 @@
 import {readFileSync} from 'fs'
 import {basename, dirname, join} from 'path'
-import {load as yamlLoad, dump as yamlDump} from 'js-yaml';
+import {dump as yamlDump, load as yamlLoad} from 'js-yaml';
+import {VariablesMatcher} from "./VariablesMatcher";
 
 export class YamlTemplate {
 
     public evaluate(dir: string, content: string, params: Map<string, string> = new Map()): string {
 
-        //TODO shall we load files recursively first, or do params replacement first?
-        //TODO if we load files first a top level file params will apply to nested files as well, if it a nice feature or a bad scoping practice?
-
-        content = this.replaceVars(content, params);
-        content = this.replaceFiles(content, dir);
+        content = this.resolveVars(content, params);
+        content = this.resolveFiles(content, dir);
 
         return content;
     };
@@ -21,24 +19,33 @@ export class YamlTemplate {
      * @param content content with params
      * @param params params key - value
      */
-    public replaceVars(content: string, params: Map<string, string> = new Map()) {
-        //supports double params e.g. ${opt:foo}-${opt:bar}
-        //does not support nested constructions ${opt:foo-${opt:bar}}   - will only match bar parameter
-        const paramRegexpStr = '\\${(opt|self):([^}]+)}';
+    public resolveVars(content: string, params: Map<string, string> = new Map()) {
+        return content.split('\n')
+            .map(line => this.replaceVars(line, params))
+            .join('\n');
+    }
 
-        const paramRegexp = new RegExp(paramRegexpStr, 'g');
 
-        content = content.replace(paramRegexp, (match) => {
-            const paramName = new RegExp(paramRegexpStr).exec(match)[2];  //stateful RegExps, so need new instance
+    /**
+     * Locates and replace variables recursively if a matching parameter exists.
+     * * supports multiple params on s single line e.g. ${opt:foo}-${opt:bar}
+     * * supports nested variables ${opt:foo-${opt:bar}}
+     * @param value a single line string
+     * @param params
+     */
+    private replaceVars(value: string, params: Map<string, string>): string {
+        const variablesMatcher = new VariablesMatcher(value);
+
+        for (let variable of variablesMatcher) {
+            const paramName = /\${(opt|self):(.+)}/.exec(variable)[2];  //extract the variable name
             const paramValue = params.get(paramName);
             if (paramValue) {
-                console.log(`Resolving ${match} => ${paramValue}`);
-                return paramValue;
-            } else {
-                return match;
+                console.log(`Resolving ${variable} => ${paramValue}`);
+                value = value.replace(variable, paramValue);
             }
-        });
-        return content;
+        }
+
+        return value;
     }
 
     /**
@@ -48,7 +55,7 @@ export class YamlTemplate {
      * @param content content with params
      * @param dir current directory absolute path
      */
-    public replaceFiles(content: string, dir: string) {
+    public resolveFiles(content: string, dir: string) {
         const paramRegexpStr = '([\\t ]*)\\${tfile:([^:]+)(:(.*))?}';
         const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
 
@@ -92,6 +99,7 @@ export class YamlTemplate {
     private static mapToString(params: Map<string, string>): string {
         return Array.from(params.entries()).map(value => value.join("=")).join(",");
     };
+
 }
 
 export const load = function (filePath: string, params?: Map<string, string>) {
