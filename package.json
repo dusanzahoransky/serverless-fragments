@@ -1,5 +1,5 @@
 {
-  "name": "@rezdy/yaml-template",
+  "name": "resusable-serverless-template",
   "version": "1.0.0",
   "main": "dist/src/index.js",
   "scripts": {
@@ -15,15 +15,16 @@
   "dependencies": {
     "yaml-boost": "^1.8.2"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dusanzahoransky/resusable-serverless-template"
+  },
   "devDependencies": {
     "@types/jest": "^23.3.12",
     "@types/node": "^8.0.57",
     "jest": "^23.6.0",
     "ts-jest": "^23.10.4",
     "typescript": "^2.9.2"
-  },
-  "publishConfig": {
-    "registry": "https://nexus.tools.rezdy.com/repository/rc-npm-private/"
   },
   "license": "MIT"
 }

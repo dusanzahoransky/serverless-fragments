@@ -102,9 +102,30 @@ export class YamlTemplate {
 
 }
 
-export const load = function (filePath: string, params?: Map<string, string>) {
+/**
+ * Loads the specified yaml file recursively and resolves the params. Resolves serverless variables matched with params.
+ *
+ * Top level files as well as nested files do not need to be valid yaml files,
+ * only the final structure after the template files are recursively loaded has to be a valid yaml.
+ *
+ * A scope of the params is only the top level file, nested files have to be loaded with own params definition.
+ *
+ * @see resolveVars
+ * @see resolveFiles
+ *
+ * @param filePath file absolute path
+ * @param params sls variable name -> value map. E.g. Map { '(foo' => 'bar', 'stage' => 'test)' }
+ * @return yaml object
+ */
+export const load = function (filePath: string, params?: Map<string, string>): string {
     return yamlLoad(new YamlTemplate().loadFile(filePath, params));
 };
-export const dump = function (yaml) {
+
+/**
+ * Dump yaml object
+ * @param yaml
+ * @return string representation of the yaml object
+ */
+export const dump = function (yaml) : string {
     return yamlDump(yaml);
 };
