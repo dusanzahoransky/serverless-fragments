@@ -28,12 +28,12 @@ export class VariablesMatcher implements IterableIterator<string> {
     }
 
     public locateVarsRecursive(value: string, locatedAfterIndex: number = -1): Array<number[]> {
-        let startToken = this.nextStartToken(value, locatedAfterIndex);
+        let startToken = VariablesMatcher.nextStartToken(value, locatedAfterIndex);
         if (startToken == -1) return [];
 
         //check if the closest token is another start index (nested variables) or end index
-        let nextStartToken = this.nextStartToken(value, startToken);
-        const endToken = this.nextEndToken(value, startToken);
+        let nextStartToken = VariablesMatcher.nextStartToken(value, startToken);
+        const endToken = VariablesMatcher.nextEndToken(value, startToken);
 
         if (endToken == -1) { //no variable found, end token is missing e.g. ${opt:bar
             return [];
@@ -50,14 +50,14 @@ export class VariablesMatcher implements IterableIterator<string> {
         //nested variables, let's extract the child variable first
         const nestedVars = this.locateVarsRecursive(value, startToken);
         if (nestedVars.length > 0) {
-            const endToken = this.nextEndToken(value, nestedVars[nestedVars.length - 1][1]);
+            const endToken = VariablesMatcher.nextEndToken(value, nestedVars[nestedVars.length - 1][1]);
             return nestedVars.concat([[startToken, endToken]]);
         } else {
             return [[startToken, endToken]];
         }
     }
 
-    private nextStartToken(value: string, locatedAfterIndex: number = -1): number {
+    private static nextStartToken(value: string, locatedAfterIndex: number = -1): number {
         const optStartIndex = value.indexOf('${opt:', locatedAfterIndex + 1);
         const selfStartIndex = value.indexOf('${self:', locatedAfterIndex + 1);
 
@@ -70,7 +70,7 @@ export class VariablesMatcher implements IterableIterator<string> {
         return optStartIndex < selfStartIndex ? optStartIndex : selfStartIndex;
     }
 
-    private nextEndToken(value: string, locatedAfterIndex: number = -1): number {
+    private static nextEndToken(value: string, locatedAfterIndex: number = -1): number {
         return value.indexOf('}', locatedAfterIndex + 1);
     }
 
