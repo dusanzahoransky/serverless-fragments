@@ -41,7 +41,7 @@ Using template variable ``tfile``
 **serverless.js**
 ```
 const path = require('path');
-const template = require('resusable-serverless-template');
+const template = require('reusable-serverless-template');
 
 let serverlessYaml = template.load(path.join(__dirname, 'serverless/serverless.core.yml', new Map([['version', '1.0.0']])));
 
