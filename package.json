@@ -24,5 +24,6 @@
     "type": "git",
     "url": "https://github.com/dusanzahoransky/reusable-serverless-template"
   },
+  "keywords": ["serverless", "template", "resuse", "parametrized", "yaml"],
   "license": "MIT"
 }
