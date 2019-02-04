@@ -1,8 +1,10 @@
 import {readFileSync} from 'fs'
 import {basename, dirname, join} from 'path'
 import {dump as yamlDump, load as yamlLoad} from 'js-yaml';
-import {VariablesMatcher} from "./VariablesMatcher";
 
+/**
+ * A stateless template processor.
+ */
 export class YamlTemplate {
 
     public evaluate(dir: string, content: string, params: Map<string, string> = new Map()): string {
@@ -14,17 +16,17 @@ export class YamlTemplate {
     };
 
     /**
-     * Matches all cmd params ${opt:foo} or variables ${self:custom.bar}
-     * and replaces them if there are matching params in the map (matching key e.g. foo or bar)
-     * @param content content with params
-     * @param params params key - value
+     * Matches all serverless variables including cmd parameters ${opt:foo} or custom variables ${self:custom.bar}
+     * and replace them if there are matching parameters in the params map (matching key is found e.g. foo or custom.bar)
+     *
+     * @param content content with serverless variables
+     * @param params parameters map: extracted variable name -> parameter value
      */
     public resolveVars(content: string, params: Map<string, string> = new Map()) {
         return content.split('\n')
-            .map(line => this.replaceVars(line, params))
+            .map(line => this.resolveVariablesRecursively(line, params))
             .join('\n');
     }
-
 
     /**
      * Locates and replace variables recursively if a matching parameter exists.
@@ -32,20 +34,74 @@ export class YamlTemplate {
      * * supports nested variables ${opt:foo-${opt:bar}}
      * @param value a single line string
      * @param params
+     * @param afterIndex start matching after the specified index
      */
-    private replaceVars(value: string, params: Map<string, string>): string {
-        const variablesMatcher = new VariablesMatcher(value);
+    public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
+        let startToken = this.nextStartToken(value, afterIndex);
+        if (startToken == -1) return value;
 
-        for (let variable of variablesMatcher) {
-            const paramName = /\${(opt|self):(.+)}/.exec(variable)[2];  //extract the variable name
-            const paramValue = params.get(paramName);
-            if (paramValue) {
-                console.log(`Resolving ${variable} => ${paramValue}`);
-                value = value.replace(variable, paramValue);
-            }
+        //check if the closest token is another start index (nested variables) or end index
+        //TODO optimize by scanning and pushing the next token  to a lifo queue instead of doing multiple times lookahead for start and end token
+        let nextStartToken = this.nextStartToken(value, startToken);
+        let endToken = this.nextEndToken(value, startToken);
+
+        //no variable found, end token is missing e.g. ${opt:bar
+        if (endToken == -1) {
+            return value;
+        }
+
+        //single variables only
+        if (nextStartToken == -1) {
+            return this.replaceVariable(value, startToken, endToken, params);
+        }
+
+        //multiple variables e.g. ${opt:foo}-${opt:bar}, process the string from the end to not mess up the first matched variable indexes with replaced string
+        if (nextStartToken > endToken) {
+            value = this.resolveVariablesRecursively(value, params, endToken);
+            value = this.replaceVariable(value, startToken, endToken, params);
+        }
+
+        //nested variables ${opt:foo-${opt:bar}}, process the nested one first
+        value = this.resolveVariablesRecursively(value, params, startToken);
+        endToken = this.nextEndToken(value, startToken);
+
+        if (endToken == -1) { //no variable found, end token is missing e.g. ${opt:bar
+            return value;
+        }
+
+        return this.replaceVariable(value, startToken, endToken, params);
+    }
+
+    public replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
+
+        const variable = value.substr(startIndex, endIndex - startIndex + 1);
+
+        const paramName = /\${(opt|self):(.+)}/.exec(variable)[2];  //extract the variable name
+        const paramValue = params.get(paramName);
+        if (paramValue) {
+            console.log(`Resolving ${variable} => ${paramValue}`);
+            value = value.replace(variable, paramValue);
         }
 
         return value;
+    }
+
+
+    public nextStartToken(value: string, afterIndex: number = -1): number {
+        const optStartIndex = value.indexOf('${opt:', afterIndex + 1);
+        const selfStartIndex = value.indexOf('${self:', afterIndex + 1);
+
+        if (optStartIndex == -1) {
+            return selfStartIndex;
+        }
+        if (selfStartIndex == -1) {
+            return optStartIndex;
+        }
+        return optStartIndex < selfStartIndex ? optStartIndex : selfStartIndex;
+    }
+
+    public nextEndToken(value: string, afterIndex: number = -1): number {
+        return value.indexOf('}', afterIndex + 1);
     }
 
     /**
@@ -68,8 +124,8 @@ export class YamlTemplate {
 
     /**
      * Converts nameValue pairs of params from string to Map.
-     * E.g. 'foo =bar,stage = test' will become a Map { '(foo' => 'bar', 'stage' => 'test)' }
-     * @param params comma separated params with name and value
+     * E.g. 'foo =bar,stage= test' will become a Map { '(foo' => 'bar', 'stage' => 'test)' }
+     * @param params comma-separated params with name and value
      */
     public toMap(params: string = ''): Map<string, string> {
         const paramMap = new Map();
@@ -84,6 +140,9 @@ export class YamlTemplate {
         return paramMap;
     }
 
+    /**
+     * @see load
+     */
     public loadFile(filePath, params: Map<string, string> = new Map(), indentation: string = ''): string {
 
         console.log(`Loading ${basename(filePath)}, indentation '${indentation}', params ${YamlTemplate.mapToString(params)}`);
@@ -103,12 +162,7 @@ export class YamlTemplate {
 }
 
 /**
- * Loads the specified yaml file recursively and resolves the params. Resolves serverless variables matched with params.
- *
- * Top level files as well as nested files do not need to be valid yaml files,
- * only the final structure after the template files are recursively loaded has to be a valid yaml.
- *
- * A scope of the params is only the top level file, nested files have to be loaded with own params definition.
+ * Loads the specified yaml file recursively and resolves the template placeholders.
  *
  * @see resolveVars
  * @see resolveFiles
@@ -126,6 +180,6 @@ export const load = function (filePath: string, params?: Map<string, string>): s
  * @param yaml
  * @return string representation of the yaml object
  */
-export const dump = function (yaml) : string {
+export const dump = function (yaml): string {
     return yamlDump(yaml);
 };
