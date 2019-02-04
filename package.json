@@ -12,7 +12,9 @@
   "files": [
     "dist"
   ],
-  "dependencies": {},
+  "dependencies": {
+    "js-yaml": "^3.12.1"
+  },
   "devDependencies": {
     "@types/jest": "^23.3.12",
     "@types/node": "^8.0.57",
@@ -24,6 +26,12 @@
     "type": "git",
     "url": "https://github.com/dusanzahoransky/reusable-serverless-template"
   },
-  "keywords": ["serverless", "template", "resuse", "parametrized", "yaml"],
+  "keywords": [
+    "serverless",
+    "template",
+    "resuse",
+    "parametrized",
+    "yaml"
+  ],
   "license": "MIT"
 }
