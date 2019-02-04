@@ -38,7 +38,11 @@ export class YamlTemplate {
      */
     public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
         let startToken = this.nextStartToken(value, afterIndex);
-        if (startToken == -1) return value;
+
+        //nothing to resolve here
+        if (startToken == -1) {
+            return value;
+        }
 
         //check if the closest token is another start index (nested variables) or end index
         //TODO optimize by scanning and pushing the next token  to a lifo queue instead of doing multiple times lookahead for start and end token
@@ -58,14 +62,14 @@ export class YamlTemplate {
         //multiple variables e.g. ${opt:foo}-${opt:bar}, process the string from the end to not mess up the first matched variable indexes with replaced string
         if (nextStartToken > endToken) {
             value = this.resolveVariablesRecursively(value, params, endToken);
-            value = this.replaceVariable(value, startToken, endToken, params);
+            return this.replaceVariable(value, startToken, endToken, params);
         }
 
         //nested variables ${opt:foo-${opt:bar}}, process the nested one first
         value = this.resolveVariablesRecursively(value, params, startToken);
         endToken = this.nextEndToken(value, startToken);
 
-        if (endToken == -1) { //no variable found, end token is missing e.g. ${opt:bar
+        if (endToken == -1) { //no variable found, invalid syntax - end token is missing e.g. ${opt:bar
             return value;
         }
 
@@ -91,6 +95,7 @@ export class YamlTemplate {
         const optStartIndex = value.indexOf('${opt:', afterIndex + 1);
         const selfStartIndex = value.indexOf('${self:', afterIndex + 1);
 
+        //gets the closest token, there can be both on a same line e.g. ${opt:foo} - ${self:bar}
         if (optStartIndex == -1) {
             return selfStartIndex;
         }
@@ -111,7 +116,7 @@ export class YamlTemplate {
      * @param content content with params
      * @param dir current directory absolute path
      */
-    public resolveFiles(content: string, dir: string) {
+    public resolveFiles(content: string, dir: string): string {
         const paramRegexpStr = '([\\t ]*)\\${tfile:([^:]+)(:(.*))?}';
         const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
 
@@ -131,9 +136,9 @@ export class YamlTemplate {
         const paramMap = new Map();
 
         params.split(",").forEach(nameValuePair => {
-            const [name, value] = nameValuePair.split("=");
+            const [name, value] = nameValuePair.split("=").map(s => s.trim());
             if (name && value) {
-                paramMap.set(name.trim(), value.trim());
+                paramMap.set(name, value);
             }
         });
 
