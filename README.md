@@ -27,7 +27,8 @@ nested files have to be loaded with own parameters using ``tfile`` placeholder.
 Loads the specified file recursively and apply parameters to matched variables names specified using opt, and custom 
 placeholders.
 
-Avoid using reserved characters for file names, parameter names and values ``{`` ``:`` ``,`` ``=``  
+Avoid using the following reserved characters for file names``}`` ``:``   
+Avoid using the following reserved characters for parameter names and values ``,`` ``=``  
 
 **Syntax:** ``` tfile:[file path]:[parameters]```, where 
 * _file_ a relative path to nested template file (relative to the directory of the top level file) 

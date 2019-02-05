@@ -1,0 +1,1 @@
+${tfile:resources/simple.nested.yml:stage=${opt:serverless-processed-variable}}
