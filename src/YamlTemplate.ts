@@ -120,7 +120,7 @@ export class YamlTemplate {
      * @param dir current directory absolute path
      */
     public resolveFiles(content: string, dir: string): string {
-        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:}]+)(:([^}]))?}';
+        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:}]+)(:([^}]+))?}';
         const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
 
         content = content.replace(paramRegexp, (match) => {
@@ -177,10 +177,15 @@ export class YamlTemplate {
  *
  * @param filePath file absolute path
  * @param params sls variable name -> value map. E.g. Map { '(foo' => 'bar', 'stage' => 'test)' }
+ * @param print print the resolved template before converting to Yaml object
  * @return yaml object
  */
-export const load = function (filePath: string, params?: Map<string, string>): string {
-    return yamlLoad(new YamlTemplate().loadFile(filePath, params));
+export const load = function (filePath: string, params?: Map<string, string>, print: boolean = true): string {
+    const resolvedTemplate = new YamlTemplate().loadFile(filePath, params);
+    if(print){
+        console.log(resolvedTemplate);
+    }
+    return yamlLoad(resolvedTemplate);
 };
 
 /**
