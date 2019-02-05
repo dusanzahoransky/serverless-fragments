@@ -16,15 +16,22 @@ export class YamlTemplate {
     };
 
     /**
-     * Matches all serverless variables including cmd parameters ${opt:foo} or custom variables ${self:custom.bar}
-     * and replace them if there are matching parameters in the params map (matching key is found e.g. foo or custom.bar)
-     *
-     * @param content content with serverless variables
-     * @param params parameters map: extracted variable name -> parameter value
+     * Tokenize the content by lines and process the variables tokens recursively on each of them
+     * @return content with resolved variables
      */
     public resolveVars(content: string, params: Map<string, string> = new Map()) {
         return content.split('\n')
             .map(line => this.resolveVariablesRecursively(line, params))
+            .join('\n');
+    }
+
+    /**
+     * Tokenize the content by lines and process the tfile token recursively on each of them
+     * @return content with resolved tfiles
+     */
+    public resolveFiles(content: string, dir: string) {
+        return content.split('\n')
+            .map(line => this.resolveFilesRecursively(line, dir))
             .join('\n');
     }
 
@@ -37,6 +44,12 @@ export class YamlTemplate {
      * @param afterIndex start matching after the specified index
      */
     public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
+
+        //yaml comment, do not process
+        if(this.isCommentedLine(value)){
+            return value;
+        }
+
         let startToken = this.nextStartToken(value, afterIndex);
 
         //nothing to resolve here
@@ -74,6 +87,10 @@ export class YamlTemplate {
         }
 
         return this.replaceVariable(value, startToken, endToken, params);
+    }
+
+    private isCommentedLine(value: string) {
+        return value.match(/\s*#/);
     }
 
     public replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
@@ -114,14 +131,20 @@ export class YamlTemplate {
      * and replaces them with loaded content recursively.
      * It appends the indentation to every line of resolved file, based on the whitespaces before $file declaration
      *
-     * file name, parameter names and values can not contain characters '{', ':', ',' or '='
+     * file name can not contain characters '}', ':'
+     * parameter names can not contain characters ',' or '='
      *
      * @param content content with params
      * @param dir current directory absolute path
      */
-    public resolveFiles(content: string, dir: string): string {
-        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:}]+)(:([^}]+))?}';
-        const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
+    public resolveFilesRecursively(content: string, dir: string): string {
+        //yaml comment, do not process
+        if(this.isCommentedLine(content)){
+            return content;
+        }
+
+        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:}]+)(:(.+))?}';
+        const paramRegexp = new RegExp(paramRegexpStr);  //global to find all occurrences
 
         content = content.replace(paramRegexp, (match) => {
             const [, indentation, filePath, , params] = new RegExp(paramRegexpStr).exec(match);  //stateful RegExps, so need new instance
