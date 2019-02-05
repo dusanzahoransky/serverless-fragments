@@ -113,11 +113,14 @@ export class YamlTemplate {
      * Matches all file params ${tfile(a/b/c.yml)(foo=bar,stage=test)} with optional parameters
      * and replaces them with loaded content recursively.
      * It appends the indentation to every line of resolved file, based on the whitespaces before $file declaration
+     *
+     * file name, parameter names and values can not contain characters '{', ':', ',' or '='
+     *
      * @param content content with params
      * @param dir current directory absolute path
      */
     public resolveFiles(content: string, dir: string): string {
-        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:]+)(:(.*))?}';
+        const paramRegexpStr = '([\\t ]*)\\${tfile:([^:}]+)(:([^}]))?}';
         const paramRegexp = new RegExp(paramRegexpStr, 'g');  //global to find all occurrences
 
         content = content.replace(paramRegexp, (match) => {
