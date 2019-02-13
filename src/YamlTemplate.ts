@@ -1,6 +1,6 @@
-import {readFileSync} from 'fs'
-import {basename, dirname, join} from 'path'
-import {dump as yamlDump, load as yamlLoad} from 'js-yaml';
+import { readFileSync } from 'fs';
+import { basename, dirname, join } from 'path';
+import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 
 /**
  * A stateless template processor.
@@ -46,7 +46,7 @@ export class YamlTemplate {
     public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
 
         //yaml comment, do not process
-        if(this.isCommentedLine(value)){
+        if (this.isCommentedLine(value)) {
             return value;
         }
 
@@ -139,7 +139,7 @@ export class YamlTemplate {
      */
     public resolveFilesRecursively(content: string, dir: string): string {
         //yaml comment, do not process
-        if(this.isCommentedLine(content)){
+        if (this.isCommentedLine(content)) {
             return content;
         }
 
@@ -148,7 +148,7 @@ export class YamlTemplate {
 
         content = content.replace(paramRegexp, (match) => {
             const [, indentation, filePath, , params] = new RegExp(paramRegexpStr).exec(match);  //stateful RegExps, so need new instance
-            return this.loadFile(join(dir, filePath), this.toMap(params), indentation)
+            return this.loadFile(join(dir, filePath), this.toMap(params), indentation);
         });
         return content;
     }
@@ -205,7 +205,7 @@ export class YamlTemplate {
  */
 export const load = function (filePath: string, params?: Map<string, string>, print: boolean = true): string {
     const resolvedTemplate = new YamlTemplate().loadFile(filePath, params);
-    if(print){
+    if (print) {
         console.log(resolvedTemplate);
     }
     return yamlLoad(resolvedTemplate);
