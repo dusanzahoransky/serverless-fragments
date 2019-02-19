@@ -100,7 +100,7 @@ export class YamlTemplate {
         const paramName = /\${(opt|self):(.+)}/.exec(variable)[2];  //extract the variable name
         const paramValue = params.get(paramName);
         if (paramValue) {
-            console.log(`Resolving ${variable} => ${paramValue}`);
+            console.log(`\t ${variable} => ${paramValue}`);
             value = value.replace(variable, paramValue);
         }
 
@@ -176,7 +176,7 @@ export class YamlTemplate {
      */
     public loadFile(filePath, params: Map<string, string> = new Map(), indentation: string = ''): string {
 
-        console.log(`Loading ${basename(filePath)}, indentation '${indentation}', params ${YamlTemplate.mapToString(params)}`);
+        console.log(`Loading ${basename(filePath)}(${YamlTemplate.mapToString(params)}), indented ${indentation.length}x' ', `);
 
         let fileContent = readFileSync(filePath, 'utf8');
         fileContent = fileContent.split('\n')
