@@ -200,13 +200,17 @@ export class YamlTemplate {
  *
  * @param filePath file absolute path
  * @param params sls variable name -> value map. E.g. Map { '(foo' => 'bar', 'stage' => 'test)' }
- * @param print print the resolved template before converting to Yaml object
+ * @param debug print the resolved template before converting to Yaml object
  * @return yaml object
  */
-export const load = function (filePath: string, params?: Map<string, string>, print: boolean = true): string {
+export const load = function (filePath: string, params?: Map<string, string>, debug: boolean = true): string {
     const resolvedTemplate = new YamlTemplate().loadFile(filePath, params);
-    if (print) {
-        console.log(resolvedTemplate);
+    if (debug) {
+        const spaceCount = (lines: Array<string>) => lines.length.toString().length + 1;
+        console.log(resolvedTemplate
+            .split('\n')
+            .map( (line, index, lines) => `${(index+1).toString().padStart(spaceCount(lines))}:${line}`) //add line numbers so we can easily find a serverless exception source
+            .join('\n'));
     }
     return yamlLoad(resolvedTemplate);
 };
