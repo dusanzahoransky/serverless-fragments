@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { basename, dirname, join } from 'path';
 import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 
@@ -211,6 +211,7 @@ export const load = function (filePath: string, params?: Map<string, string>, de
             .split('\n')
             .map( (line, index, lines) => `${(index+1).toString().padStart(spaceCount(lines))}:${line}`) //add line numbers so we can easily find a serverless exception source
             .join('\n'));
+        writeFileSync(`${dirname(filePath)}/serverless.yml`, resolvedTemplate);
     }
     return yamlLoad(resolvedTemplate);
 };
