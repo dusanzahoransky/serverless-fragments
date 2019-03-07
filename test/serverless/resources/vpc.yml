@@ -1,0 +1,5 @@
+vpc:
+  securityGroupIds:
+  - ${self:securityGroupId}
+  subnetIds:
+  - ${self:subnetId}

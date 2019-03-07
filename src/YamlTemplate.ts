@@ -46,11 +46,11 @@ export class YamlTemplate {
     public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
 
         //yaml comment, do not process
-        if (this.isCommentedLine(value)) {
+        if (YamlTemplate.isCommentedLine(value)) {
             return value;
         }
 
-        let startToken = this.nextStartToken(value, afterIndex);
+        let startToken = YamlTemplate.nextStartToken(value, afterIndex);
 
         //nothing to resolve here
         if (startToken == -1) {
@@ -59,8 +59,8 @@ export class YamlTemplate {
 
         //check if the closest token is another start index (nested variables) or end index
         //TODO optimize by scanning and pushing the next token  to a lifo queue instead of doing multiple times lookahead for start and end token
-        let nextStartToken = this.nextStartToken(value, startToken);
-        let endToken = this.nextEndToken(value, startToken);
+        let nextStartToken = YamlTemplate.nextStartToken(value, startToken);
+        let endToken = YamlTemplate.nextEndToken(value, startToken);
 
         //no variable found, end token is missing e.g. ${opt:bar
         if (endToken == -1) {
@@ -69,31 +69,31 @@ export class YamlTemplate {
 
         //single variables only
         if (nextStartToken == -1) {
-            return this.replaceVariable(value, startToken, endToken, params);
+            return YamlTemplate.replaceVariable(value, startToken, endToken, params);
         }
 
         //multiple variables e.g. ${opt:foo}-${opt:bar}, process the string from the end to not mess up the first matched variable indexes with replaced string
         if (nextStartToken > endToken) {
             value = this.resolveVariablesRecursively(value, params, endToken);
-            return this.replaceVariable(value, startToken, endToken, params);
+            return YamlTemplate.replaceVariable(value, startToken, endToken, params);
         }
 
         //nested variables ${opt:foo-${opt:bar}}, process the nested one first
         value = this.resolveVariablesRecursively(value, params, startToken);
-        endToken = this.nextEndToken(value, startToken);
+        endToken = YamlTemplate.nextEndToken(value, startToken);
 
         if (endToken == -1) { //no variable found, invalid syntax - end token is missing e.g. ${opt:bar
             return value;
         }
 
-        return this.replaceVariable(value, startToken, endToken, params);
+        return YamlTemplate.replaceVariable(value, startToken, endToken, params);
     }
 
-    private isCommentedLine(value: string) {
+    private static isCommentedLine(value: string) {
         return value.match(/\s*#/);
     }
 
-    public replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
+    public static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
 
         const variable = value.substr(startIndex, endIndex - startIndex + 1);
 
@@ -108,7 +108,7 @@ export class YamlTemplate {
     }
 
 
-    public nextStartToken(value: string, afterIndex: number = -1): number {
+    public static nextStartToken(value: string, afterIndex: number = -1): number {
         const optStartIndex = value.indexOf('${opt:', afterIndex + 1);
         const selfStartIndex = value.indexOf('${self:', afterIndex + 1);
 
@@ -122,7 +122,7 @@ export class YamlTemplate {
         return optStartIndex < selfStartIndex ? optStartIndex : selfStartIndex;
     }
 
-    public nextEndToken(value: string, afterIndex: number = -1): number {
+    public static nextEndToken(value: string, afterIndex: number = -1): number {
         return value.indexOf('}', afterIndex + 1);
     }
 
@@ -139,7 +139,7 @@ export class YamlTemplate {
      */
     public resolveFilesRecursively(content: string, dir: string): string {
         //yaml comment, do not process
-        if (this.isCommentedLine(content)) {
+        if (YamlTemplate.isCommentedLine(content)) {
             return content;
         }
 
@@ -174,7 +174,7 @@ export class YamlTemplate {
     /**
      * @see load
      */
-    public loadFile(filePath, params: Map<string, string> = new Map(), indentation: string = ''): string {
+    public loadFile(filePath: string, params: Map<string, string> = new Map(), indentation: string = ''): string {
 
         console.log(`Loading ${basename(filePath)}(${YamlTemplate.mapToString(params)}), indented ${indentation.length}x' ', `);
 
