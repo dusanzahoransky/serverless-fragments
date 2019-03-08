@@ -35,6 +35,22 @@ placeholders.
 Avoid using the following reserved characters for:
  * file names ``}`` ``:``   
  * parameters names and values ``,`` ``=``  
+ 
+tfile supports referencing json files, which are automatically converted to yaml if their extension is ``.json``
+This might be useful to keep configuration files as json and easily reuse them with the code, 
+as many languages support JSON natively, unlike yaml.
+ ```
+ config
+ ├── local.json
+ └── dev.json
+ └── test.json
+ └── stage.json
+ └── prod.json
+ ```
+ ```
+ custom:
+   ${tfile:config/${opt:profile}.json}
+```
 
 **Syntax:** ``` tfile:[file path]:[parameters]```, where 
 * _file_ a relative path to nested template file (relative to the directory of the loaded top level file) 
@@ -132,16 +148,3 @@ from processing
 * _1.0.1_ added support to match and resolve nested variables like
 ``${self:custom.tableName${opt:env}}`` 
 * _1.1.0_ tfile supports referencing json files, which are automatically converted to yaml if their extension is. json
-This might be useful to keep you configuration file as json, which can be easily reused with your code.
-```
-config
-├── local.json
-└── dev.json
-└── test.json
-└── stage.json
-└── prod.json
-```
-```
-custom:
-  ${tfile:config/${opt:profile}.json}
-```
