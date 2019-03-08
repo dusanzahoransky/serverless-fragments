@@ -49,7 +49,7 @@ as many languages support JSON natively, unlike yaml.
  ```
  ```
  custom:
-   ${tfile:config/${opt:profile}.json}
+   ${tfile:config/${opt:stage}.json}
 ```
 
 **Syntax:** ``` tfile:[file path]:[parameters]```, where 
