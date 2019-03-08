@@ -1,7 +1,9 @@
-service: webhookService
+service: ${opt:name}
+
 provider:
-  name: ${opt:nonExistingParam}-${self:custom.name}
-  stage: ${opt:stage}
-  env: ${opt:stage}
-  ${tfile:resources/simple.nested.yml:foo=bar,stage=test}
-  ${tfile:resources/simple.nested2.yml}
+  memorySize: ${opt:notProvidedParam}
+  profile: ${opt:profile}
+  ${tfile:resources/provider.yml:profile=prod,region=ap-southeast-2}
+  ${tfile:resources/vpc.yml}
+custom:
+  ${tfile:config/${opt:profile}.json}

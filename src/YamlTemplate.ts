@@ -1,6 +1,6 @@
-import {readFileSync} from 'fs'
-import {basename, dirname, join} from 'path'
-import {dump as yamlDump, load as yamlLoad} from 'js-yaml';
+import { readFileSync, writeFileSync } from 'fs';
+import { basename, dirname, join } from 'path';
+import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 
 /**
  * A stateless template processor.
@@ -46,11 +46,11 @@ export class YamlTemplate {
     public resolveVariablesRecursively(value: string, params: Map<string, string>, afterIndex: number = -1): string {
 
         //yaml comment, do not process
-        if(this.isCommentedLine(value)){
+        if (YamlTemplate.isCommentedLine(value)) {
             return value;
         }
 
-        let startToken = this.nextStartToken(value, afterIndex);
+        let startToken = YamlTemplate.nextStartToken(value, afterIndex);
 
         //nothing to resolve here
         if (startToken == -1) {
@@ -59,8 +59,8 @@ export class YamlTemplate {
 
         //check if the closest token is another start index (nested variables) or end index
         //TODO optimize by scanning and pushing the next token  to a lifo queue instead of doing multiple times lookahead for start and end token
-        let nextStartToken = this.nextStartToken(value, startToken);
-        let endToken = this.nextEndToken(value, startToken);
+        let nextStartToken = YamlTemplate.nextStartToken(value, startToken);
+        let endToken = YamlTemplate.nextEndToken(value, startToken);
 
         //no variable found, end token is missing e.g. ${opt:bar
         if (endToken == -1) {
@@ -69,38 +69,38 @@ export class YamlTemplate {
 
         //single variables only
         if (nextStartToken == -1) {
-            return this.replaceVariable(value, startToken, endToken, params);
+            return YamlTemplate.replaceVariable(value, startToken, endToken, params);
         }
 
         //multiple variables e.g. ${opt:foo}-${opt:bar}, process the string from the end to not mess up the first matched variable indexes with replaced string
         if (nextStartToken > endToken) {
             value = this.resolveVariablesRecursively(value, params, endToken);
-            return this.replaceVariable(value, startToken, endToken, params);
+            return YamlTemplate.replaceVariable(value, startToken, endToken, params);
         }
 
         //nested variables ${opt:foo-${opt:bar}}, process the nested one first
         value = this.resolveVariablesRecursively(value, params, startToken);
-        endToken = this.nextEndToken(value, startToken);
+        endToken = YamlTemplate.nextEndToken(value, startToken);
 
         if (endToken == -1) { //no variable found, invalid syntax - end token is missing e.g. ${opt:bar
             return value;
         }
 
-        return this.replaceVariable(value, startToken, endToken, params);
+        return YamlTemplate.replaceVariable(value, startToken, endToken, params);
     }
 
-    private isCommentedLine(value: string) {
+    private static isCommentedLine(value: string) {
         return value.match(/\s*#/);
     }
 
-    public replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
+    public static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
 
         const variable = value.substr(startIndex, endIndex - startIndex + 1);
 
         const paramName = /\${(opt|self):(.+)}/.exec(variable)[2];  //extract the variable name
         const paramValue = params.get(paramName);
         if (paramValue) {
-            console.log(`Resolving ${variable} => ${paramValue}`);
+            console.log(`\t ${variable} => ${paramValue}`);
             value = value.replace(variable, paramValue);
         }
 
@@ -108,7 +108,7 @@ export class YamlTemplate {
     }
 
 
-    public nextStartToken(value: string, afterIndex: number = -1): number {
+    public static nextStartToken(value: string, afterIndex: number = -1): number {
         const optStartIndex = value.indexOf('${opt:', afterIndex + 1);
         const selfStartIndex = value.indexOf('${self:', afterIndex + 1);
 
@@ -122,7 +122,7 @@ export class YamlTemplate {
         return optStartIndex < selfStartIndex ? optStartIndex : selfStartIndex;
     }
 
-    public nextEndToken(value: string, afterIndex: number = -1): number {
+    public static nextEndToken(value: string, afterIndex: number = -1): number {
         return value.indexOf('}', afterIndex + 1);
     }
 
@@ -139,7 +139,7 @@ export class YamlTemplate {
      */
     public resolveFilesRecursively(content: string, dir: string): string {
         //yaml comment, do not process
-        if(this.isCommentedLine(content)){
+        if (YamlTemplate.isCommentedLine(content)) {
             return content;
         }
 
@@ -148,7 +148,7 @@ export class YamlTemplate {
 
         content = content.replace(paramRegexp, (match) => {
             const [, indentation, filePath, , params] = new RegExp(paramRegexpStr).exec(match);  //stateful RegExps, so need new instance
-            return this.loadFile(join(dir, filePath), this.toMap(params), indentation)
+            return this.loadFile(join(dir, filePath), this.toMap(params), indentation);
         });
         return content;
     }
@@ -174,11 +174,17 @@ export class YamlTemplate {
     /**
      * @see load
      */
-    public loadFile(filePath, params: Map<string, string> = new Map(), indentation: string = ''): string {
+    public loadFile(filePath: string, params: Map<string, string> = new Map(), indentation: string = ''): string {
 
-        console.log(`Loading ${basename(filePath)}, indentation '${indentation}', params ${YamlTemplate.mapToString(params)}`);
+        console.log(`Loading ${basename(filePath)}(${YamlTemplate.mapToString(params)}), indented ${indentation.length}x' ', `);
 
         let fileContent = readFileSync(filePath, 'utf8');
+
+        //convert json files content to yaml which allows us to e.g. keep configuration as JSON to be easily readable from js code as well
+        if(filePath.endsWith('.json')){
+            fileContent = yamlDump(JSON.parse(fileContent));
+        }
+
         fileContent = fileContent.split('\n')
             .map(value => indentation + value)
             .join('\n');
@@ -200,13 +206,24 @@ export class YamlTemplate {
  *
  * @param filePath file absolute path
  * @param params sls variable name -> value map. E.g. Map { '(foo' => 'bar', 'stage' => 'test)' }
- * @param print print the resolved template before converting to Yaml object
+ * @param debug print the resolved template before converting to Yaml object
  * @return yaml object
  */
-export const load = function (filePath: string, params?: Map<string, string>, print: boolean = true): string {
+export const load = function (filePath: string, params?: Map<string, string>, debug: boolean = true): string {
     const resolvedTemplate = new YamlTemplate().loadFile(filePath, params);
-    if(print){
-        console.log(resolvedTemplate);
+    if (debug) {
+        const spaceCount = (lines: Array<string>) => lines.length.toString().length + 1;
+        console.log(resolvedTemplate
+            .split('\n')
+            .map( (line, index, lines) => `${(index+1).toString().padStart(spaceCount(lines))}:${line}`) //add line numbers so we can easily find a serverless exception source
+            .join('\n'));
+        writeFileSync(`${dirname(filePath)}/serverless.yml`,
+`# Generated by https://www.npmjs.com/package/reusable-serverless-template.
+# Do not edit this file directly but serverless.js.
+
+${resolvedTemplate}
+`
+        );
     }
     return yamlLoad(resolvedTemplate);
 };

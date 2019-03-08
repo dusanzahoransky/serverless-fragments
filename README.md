@@ -44,7 +44,7 @@ template file
 **Usage:**
  
  * nested file without parameters ``${tfile:iamRoleStatements/dynamoDbFull.yml}``
- * with parameters ``${tfile:iamRoleStatements/dynamoDbFull.yml:tableName=webhook}``
+ * with parameters ``${tfile:iamRoleStatements/dynamoDbFull.yml:tableName=entity}``
  
 ## opt and custom
 
@@ -77,16 +77,14 @@ or tfile in nested templates
 const path = require('path');
 const template = require('reusable-serverless-template');
 
-let serverlessYaml = template.load(path.join(__dirname, 'serverless/serverless.core.yml', new Map([['version', '1.0.0']])));
-
-console.log(template.dump(serverlessYaml));
+const serverlessYaml = template.load(path.join(__dirname, 'serverless/serverless.core.yml', new Map([['version', '1.0.0']])));
 
 module.exports = serverlessYaml;
 ```
 
 **serverless.core.yml**
 ```
-service: webhookService
+service: entityService
 
 provider:
   ${tfile:provider/nodejs.yml}
@@ -129,7 +127,21 @@ Use standard serverless command to use the serverless.js file e.g.
 ```sls package --stage dev --region ap-southeast-2 -v```
 
 ## Changelog
-* 1.0.5 support comments - # at the beginning of a line (with optional lead white spaces) will skip the line
+* _1.0.5_ supports comments - # at the beginning of a line (with optional lead white spaces) will skip the line
 from processing
-* 1.0.1 added support to match and resolve nested variables like
+* _1.0.1_ added support to match and resolve nested variables like
 ``${self:custom.tableName${opt:env}}`` 
+* _1.1.0_ tfile supports referencing json files, which are automatically converted to yaml if their extension is. json
+This might be useful to keep you configuration file as json, which can be easily reused with your code.
+```
+config
+├── local.json
+└── dev.json
+└── test.json
+└── stage.json
+└── prod.json
+```
+```
+custom:
+  ${tfile:config/${opt:profile}.json}
+```
