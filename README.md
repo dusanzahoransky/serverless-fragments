@@ -131,3 +131,17 @@ Use standard serverless command to use the serverless.js file e.g.
 from processing
 * _1.0.1_ added support to match and resolve nested variables like
 ``${self:custom.tableName${opt:env}}`` 
+* _1.0.12_ tfile supports referencing json files, which are automatically converted to yaml if their extension is. json
+This might be useful to keep you configuration file as json, which can be easily reused with your code.
+```
+config
+├── local.json
+└── dev.json
+└── test.json
+└── stage.json
+└── prod.json
+```
+```
+custom:
+  ${tfile:config/${opt:profile}.json}
+```

@@ -179,6 +179,12 @@ export class YamlTemplate {
         console.log(`Loading ${basename(filePath)}(${YamlTemplate.mapToString(params)}), indented ${indentation.length}x' ', `);
 
         let fileContent = readFileSync(filePath, 'utf8');
+
+        //convert json files content to yaml which allows us to e.g. keep configuration as JSON to be easily readable from js code as well
+        if(filePath.endsWith('.json')){
+            fileContent = yamlDump(JSON.parse(fileContent));
+        }
+
         fileContent = fileContent.split('\n')
             .map(value => indentation + value)
             .join('\n');

@@ -5,3 +5,5 @@ provider:
   profile: ${opt:profile}
   ${tfile:resources/provider.yml:profile=prod,region=ap-southeast-2}
   ${tfile:resources/vpc.yml}
+custom:
+  ${tfile:config/${opt:profile}.json}

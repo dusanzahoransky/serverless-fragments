@@ -45,26 +45,17 @@ describe("YamlTemplate resolveVars tests", () => {
 
 describe("YamlTemplate resolveFiles tests", () => {
 
+
     it("should load tfile (no parameters specified, no variables will be resolved)", async () => {
 
-        const filePath = join(__dirname, 'serverless/serverless.core.yml');
+        const filePath = join(__dirname, 'serverless/resources/provider.yml');
         const content = readFileSync(filePath, 'utf8');
 
         const resolved = new YamlTemplate().resolveFiles(content, dirname(filePath));
 
         const expectedContent =
-            `service: \${opt:name}
-
-provider:
-  memorySize: \${opt:notProvidedParam}
-  profile: \${opt:profile}
-  region: ap-southeast-2
-  runtime: \${opt:runtime}
-  vpc:
-    securityGroupIds:
-    - \${self:securityGroupId}
-    subnetIds:
-    - \${self:subnetId}`;
+            `region: \${opt:region}
+runtime: \${opt:runtime}`;
         expect(resolved).toBe(expectedContent);
 
         console.log(resolved);
@@ -101,7 +92,7 @@ runtime: \${opt:runtime}`;
 describe("Yaml Template file loading tests", () => {
 
     it("should load a file with absolute path", () => {
-        const resolved = load(join(__dirname, 'serverless/serverless.core.yml'));
+        const resolved = load(join(__dirname, 'serverless/resources/provider.yml'));
         expect(resolved).toBeDefined();
     });
 
@@ -124,7 +115,10 @@ provider:
     securityGroupIds:
     - \${self:securityGroupId}
     subnetIds:
-    - \${self:subnetId}`;
+    - \${self:subnetId}
+custom:
+  env: TEST
+  `;
         expect(resolved).toBe(expectedContent);
     });
 
