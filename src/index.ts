@@ -1,2 +1,2 @@
-export { YamlTemplate } from './YamlTemplate';
-export { load, dump } from './YamlTemplate';
+export { ReusableServerlessTemplate, TokenType, Token } from './ReusableServerlessTemplate';
+export { load, dump } from './ReusableServerlessTemplate';
