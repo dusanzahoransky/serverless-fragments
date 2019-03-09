@@ -5,6 +5,7 @@ import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
 export type Token = {
     index: number;
     type: TokenType;
+    indentation?: string;
 }
 
 export enum TokenType {
@@ -15,9 +16,13 @@ export enum TokenType {
     TFileEnd = "TFileEnd"
 }
 
-export type Variable ={
+export type Variable = {
     fullName: string,
     paramName: string
+}
+export type ResolvedFragment = {
+    lastToken?: Token,
+    value: string
 }
 
 /**
@@ -26,14 +31,13 @@ export type Variable ={
 export class ReusableServerlessTemplate {
 
     private static readonly VAR_START_TOKENS = [TokenType.VarStartOpt, TokenType.VarStartSelf];
-    private static readonly VAR_TOKENS = ReusableServerlessTemplate.VAR_START_TOKENS.concat(TokenType.VarEnd);
 
     static evaluate(dir: string, content: string, params: Map<string, string> = new Map()): string {
 
-        content = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        content = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         //FIXME reuse resolveTokensRecursive method to resolve files as well
-        content =  content.split('\n')
+        content = content.split('\n')
             .map(line => this.resolveFilesRecursively(line, dir))
             .join('\n');
 
@@ -75,59 +79,58 @@ export class ReusableServerlessTemplate {
      * @param params
      * @param startToken matched start token
      */
-    static resolveTokensRecursive(value: string, params: Map<string, string>, startToken?: Token): string {
+    static resolveTokensRecursive(value: string, params: Map<string, string>, startToken?: Token): ResolvedFragment {
 
-        if (!startToken){   //first run
+        if (!startToken) {   //first run
 
             //yaml comment, do not process
             if (this.isCommentedLine(value)) {
-                return value;
+                return { value };
             }
 
             startToken = this.nextToken(value, undefined, this.VAR_START_TOKENS);
 
             if (!startToken) { //nothing to resolve here
-                return value;
+                return { value };
             }
         }
 
         let nextToken;
         let currentToken = startToken;
 
-        while( (nextToken = this.nextToken(value, currentToken))){
+        while ((nextToken = this.nextToken(value, currentToken))) {
 
-            if(nextToken.type == TokenType.TFileStart){
-                //TODO resolve tfile here too
-            }
+            if (nextToken.type == TokenType.TFileStart) {} //nothing to do keep resolving variables which can be nested inside tfile
 
-            if(nextToken.type == TokenType.TFileEnd){
+            if (nextToken.type == TokenType.TFileEnd) {
                 //TODO resolve tfile here too
             }
 
             if (this.VAR_START_TOKENS.includes(nextToken.type)) {
                 //nexted variable e.g. ${self:custom-${opt:stage}} - resolve the inner variable first
-                //TODO return the index where the nested resolver finished, if the variable has not been matched with params the next token will be the end token of the nested variable
-                value = this.resolveTokensRecursive(value, params, nextToken);
+                let result = this.resolveTokensRecursive(value, params, nextToken);
+                value = result.value;
+                nextToken = result.lastToken;
                 continue;
             }
-            if(nextToken.type == TokenType.VarEnd){
+            if (nextToken.type == TokenType.VarEnd) {
                 //end token: simple var - start - end token sequence e.g. ${opt:stage} - replace it if matches with any parameter
-                if(this.matchParameter(value, startToken.index, nextToken.index, params)){
+                if (this.matchParameter(value, startToken.index, nextToken.index, params)) {
                     value = this.replaceVariable(value, startToken.index, nextToken.index, params);
                     nextToken = this.nextToken(value, startToken);
-                } else{
+                } else {
                     nextToken = this.nextToken(value, nextToken);
                 }
-                if(!nextToken || nextToken.type === TokenType.VarEnd){   //end of the variable - end the recursion, go back to the parent
-                    return value;
+                if (!nextToken || nextToken.type === TokenType.VarEnd) {   //end of the variable - end the recursion, go back to the parent
+                    return {value, lastToken : currentToken};
                 }
                 startToken = nextToken;
             }
 
             currentToken = nextToken;
-         }
+        }
 
-        return value;
+        return {value, lastToken : currentToken};
     }
 
     private static isCommentedLine(value: string) {
@@ -160,18 +163,22 @@ export class ReusableServerlessTemplate {
 
     static nextToken(value: string, currentToken: Token, filterTypes?: Array<TokenType>): Token | undefined {
 
-        const startIndex = currentToken? currentToken.index + 1 : 0;
+        const startIndex = currentToken ? currentToken.index + 1 : 0;
+        let lastNewLineIndex = -1;
 
         for (let index = startIndex; index < value.length; index++) {
-            // noinspection FallThroughInSwitchStatementJS
             switch (value.charAt(index)) {
+                case '\n':
+                    lastNewLineIndex = index;
+                    break;
                 case '}':
-                    if(currentToken && currentToken.type != TokenType.TFileEnd && currentToken.type != TokenType.VarEnd){
-                        const type = currentToken.type == TokenType.TFileStart? TokenType.TFileEnd : TokenType.VarEnd;
+                    if (currentToken && currentToken.type != TokenType.TFileEnd && currentToken.type != TokenType.VarEnd) {
+                        const type = currentToken.type == TokenType.TFileStart ? TokenType.TFileEnd : TokenType.VarEnd;
                         if (!filterTypes || filterTypes.includes(type)) {
                             return {index, type};
                         }
                     }
+                    break;
                 case '$':
                     const lookahead = value.substring(index);
                     if (lookahead.startsWith('${opt')) {
@@ -186,9 +193,12 @@ export class ReusableServerlessTemplate {
                     }
                     if (lookahead.startsWith('${tfile')) {
                         if (!filterTypes || filterTypes.includes(TokenType.TFileStart)) {
-                            return {index, type: TokenType.TFileStart};
+                            const currentLine = value.substring(lastNewLineIndex + 1, index);
+                            const indentation = currentLine.match(/[\t ]*/)[0];
+                            return {index, type: TokenType.TFileStart, indentation: (indentation ? indentation : '')};
                         }
                     }
+                    break;
             }
         }
     }

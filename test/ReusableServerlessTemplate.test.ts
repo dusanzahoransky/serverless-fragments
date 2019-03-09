@@ -11,7 +11,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
               env: \${opt:stage}`;
         const params = new Map([['service.name', 'webhookService'], ['stage', 'test']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `service: webhookService
               env: test`;
@@ -24,7 +24,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `service: \${self:service.name}-\${opt:stage}`;
         const params = new Map([['service.name', 'webhookService'], ['stage', 'test']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `service: webhookService-test`;
         expect(resolved).toBe(expectedContent);
@@ -35,7 +35,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `service: \${self:service.name}-\${opt:stage}-\${opt:version}`;
         const params = new Map([['service.name', 'webhookService'], ['stage', 'test'], ['version', '2']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `service: webhookService-test-2`;
         expect(resolved).toBe(expectedContent);
@@ -46,7 +46,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `service: \${self:service.name}-\${opt:stage}-\${opt:version}`;
         const params = new Map([['service.name', 'webhookService'], ['version', '2']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `service: webhookService-\${opt:stage}-2`;
         expect(resolved).toBe(expectedContent);
@@ -57,7 +57,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `name: \${self:\${opt:env}.tableName}`;
         const params = new Map([['env', 'prod'], ['prod.tableName', 'prod-webhook']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `name: prod-webhook`;
         expect(resolved).toBe(expectedContent);
@@ -68,7 +68,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `name: \${self:\${opt:env}.tableName}-\${opt:stage}-\${opt:version}`;
         const params = new Map([['env', 'prod'], ['prod.tableName', 'prod-webhook'], ['stage', 'test'], ['version', '2']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `name: prod-webhook-test-2`;
         expect(resolved).toBe(expectedContent);
@@ -79,7 +79,7 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         const content = `service: \${self:service.name}-\${tfile:stage}-\${opt:version}`;
         const params = new Map([['service.name', 'webhookService'], ['version', '2']]);
 
-        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params);
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
 
         const expectedContent = `service: webhookService-\${tfile:stage}-2`;
         expect(resolved).toBe(expectedContent);
@@ -180,7 +180,7 @@ describe("Reusable Serverless Template string tokenizing", () => {
     });
 
     it("should match the end token", () => {
-        let token = ReusableServerlessTemplate.nextToken('0123}', { index:0, type: TokenType.VarStartOpt});
+        let token = ReusableServerlessTemplate.nextToken('0123}', {index: 0, type: TokenType.VarStartOpt});
         expect(token).toEqual({index: 4, type: TokenType.VarEnd});
     });
 
@@ -194,15 +194,29 @@ describe("Reusable Serverless Template string tokenizing", () => {
 
 
     it("match the start tokens after index", () => {
-        let token = ReusableServerlessTemplate.nextToken('0123${opt:foo', { index:4, type: TokenType.VarEnd});
+        let token = ReusableServerlessTemplate.nextToken('0123${opt:foo', {index: 4, type: TokenType.VarEnd});
         expect(token).toBeUndefined();
 
-        token = ReusableServerlessTemplate.nextToken('0123${opt:foo', { index:3, type: TokenType.VarEnd});
+        token = ReusableServerlessTemplate.nextToken('0123${opt:foo', {index: 3, type: TokenType.VarEnd});
         expect(token).toEqual({index: 4, type: TokenType.VarStartOpt});
 
 
-        token = ReusableServerlessTemplate.nextToken('0123${opt:foo${self', { index:4, type: TokenType.VarEnd});
+        token = ReusableServerlessTemplate.nextToken('0123${opt:foo${self', {index: 4, type: TokenType.VarEnd});
         expect(token).toEqual({index: 13, type: TokenType.VarStartSelf});
+    });
+
+    it("match indentation in front of tfile start", () => {
+        let token = ReusableServerlessTemplate.nextToken('  ${tfile', undefined);
+        expect(token).toEqual({index: 2, type: TokenType.TFileStart, indentation: '  '});
+
+        token = ReusableServerlessTemplate.nextToken('${tfile', undefined);
+        expect(token).toEqual({index: 0, type: TokenType.TFileStart, indentation: ''});
+
+        const content =
+            `
+  \${tfile`;
+        token = ReusableServerlessTemplate.nextToken(content, undefined);
+        expect(token).toEqual({index: 3, type: TokenType.TFileStart, indentation: '  '});
     });
 
 });
