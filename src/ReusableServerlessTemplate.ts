@@ -82,16 +82,9 @@ export class ReusableServerlessTemplate {
     static resolveTokensRecursive(value: string, params: Map<string, string>, startToken?: Token): ResolvedFragment {
 
         if (!startToken) {   //first run
-
-            //yaml comment, do not process
-            if (this.isCommentedLine(value)) {
-                return { value };
-            }
-
             startToken = this.nextToken(value, undefined, this.VAR_START_TOKENS);
-
             if (!startToken) { //nothing to resolve here
-                return { value };
+                return {value};
             }
         }
 
@@ -100,7 +93,8 @@ export class ReusableServerlessTemplate {
 
         while ((nextToken = this.nextToken(value, currentToken))) {
 
-            if (nextToken.type == TokenType.TFileStart) {} //nothing to do keep resolving variables which can be nested inside tfile
+            if (nextToken.type == TokenType.TFileStart) {
+            } //nothing to do keep resolving variables which can be nested inside tfile
 
             if (nextToken.type == TokenType.TFileEnd) {
                 //TODO resolve tfile here too
@@ -122,7 +116,7 @@ export class ReusableServerlessTemplate {
                     nextToken = this.nextToken(value, nextToken);
                 }
                 if (!nextToken || nextToken.type === TokenType.VarEnd) {   //end of the variable - end the recursion, go back to the parent
-                    return {value, lastToken : currentToken};
+                    return {value, lastToken: currentToken};
                 }
                 startToken = nextToken;
             }
@@ -130,7 +124,7 @@ export class ReusableServerlessTemplate {
             currentToken = nextToken;
         }
 
-        return {value, lastToken : currentToken};
+        return {value, lastToken: currentToken};
     }
 
     private static isCommentedLine(value: string) {
@@ -165,21 +159,33 @@ export class ReusableServerlessTemplate {
 
         const startIndex = currentToken ? currentToken.index + 1 : 0;
         let lastNewLineIndex = -1;
+        let insideOfComment = false;
 
         for (let index = startIndex; index < value.length; index++) {
             switch (value.charAt(index)) {
                 case '\n':
                     lastNewLineIndex = index;
+                    insideOfComment = false;
+                    break;
+                case '#':
+                    insideOfComment = true;
                     break;
                 case '}':
-                    if (currentToken && currentToken.type != TokenType.TFileEnd && currentToken.type != TokenType.VarEnd) {
-                        const type = currentToken.type == TokenType.TFileStart ? TokenType.TFileEnd : TokenType.VarEnd;
-                        if (!filterTypes || filterTypes.includes(type)) {
-                            return {index, type};
-                        }
+                    if (insideOfComment) {
+                        break;
+                    }
+                    if (!currentToken || currentToken.type == TokenType.TFileEnd || currentToken.type == TokenType.VarEnd) {
+                        break;
+                    }
+                    const type = currentToken.type == TokenType.TFileStart ? TokenType.TFileEnd : TokenType.VarEnd;
+                    if (!filterTypes || filterTypes.includes(type)) {
+                        return {index, type};
                     }
                     break;
                 case '$':
+                    if (insideOfComment) {
+                        break;
+                    }
                     const lookahead = value.substring(index);
                     if (lookahead.startsWith('${opt')) {
                         if (!filterTypes || filterTypes.includes(TokenType.VarStartOpt)) {

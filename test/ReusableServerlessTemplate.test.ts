@@ -4,6 +4,20 @@ import { readFileSync } from "fs";
 
 describe("ReusableServerlessTemplate resolveVars tests", () => {
 
+    it("should skip commented lines", async () => {
+
+        const content = `service:
+            #\${self:service.name}
+            \${opt:stage}`;
+        const params = new Map([['service.name', 'webhookService'], ['stage', 'test']]);
+
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive(content, params).value;
+
+        const expectedContent = `service:
+            #\${self:service.name}
+            test`;
+        expect(resolved).toBe(expectedContent);
+    });
 
     it("should replace custom and opt serverless variables with specified parameters", async () => {
 
