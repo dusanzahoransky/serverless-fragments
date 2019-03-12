@@ -2,7 +2,7 @@ service: ${opt:name}
 
 provider:
   memorySize: ${opt:notProvidedParam}
-  profile: ${opt:profile}
+  profile: ${opt:profile, test}
   ${tfile:resources/provider.yml:profile=prod,region=ap-southeast-2}
   ${tfile:resources/vpc.yml}
 custom:

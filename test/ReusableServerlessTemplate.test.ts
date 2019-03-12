@@ -103,6 +103,17 @@ describe("ReusableServerlessTemplate resolveVars tests", () => {
         expect(resolved).toBe(expectedContent);
     });
 
+
+    it("should replace variable with defaults", async () => {
+
+        const content = `stage: \${opt:stage, test}`;
+        const params = new Map([['service.name', 'webhookService'], ['stage', 'prod']]);
+
+        const resolved = ReusableServerlessTemplate.resolveTokensRecursive('', content, params);
+
+        const expectedContent = `stage: prod`;
+        expect(resolved).toBe(expectedContent);
+    });
 });
 
 

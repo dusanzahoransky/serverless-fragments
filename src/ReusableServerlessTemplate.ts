@@ -117,8 +117,8 @@ export class ReusableServerlessTemplate {
     }
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
-        const tfilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);   //fullname ${opt:stage}
-        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)(:(.+))?}/.exec(tfilePlaceholder);  //param name stage
+        const tfilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);
+        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)(:(.+))?}/.exec(tfilePlaceholder);
         return {placeholder, filePath, params: this.toMap(params)};
     }
 
@@ -141,8 +141,8 @@ export class ReusableServerlessTemplate {
     }
 
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable {
-        const placeholder = value.substr(startIndex, endIndex - startIndex + 1);   //fullname ${opt:stage}
-        const paramName = /\${(opt|self):(.+)}/.exec(placeholder)[2];  //param name stage
+        const placeholder = value.substr(startIndex, endIndex - startIndex + 1);   //fullname ${opt:stage,test}
+        const paramName = /\${(opt|self):([^,]+)(,.+)?}/.exec(placeholder)[2];  //param name stage
         return {placeholder, paramName};
     }
 

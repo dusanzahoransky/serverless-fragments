@@ -148,3 +148,4 @@ from processing
 * _1.0.1_ added support to match and resolve nested variables like
 ``${self:custom.tableName${opt:env}}`` 
 * _1.1.0_ tfile supports referencing json files, which are automatically converted to yaml if their extension is. json
+* _1.2.1_ opt and custom now match variable names with defaults e.g. ``${opt:stage, 'dev'}``
