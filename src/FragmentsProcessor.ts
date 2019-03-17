@@ -1,7 +1,6 @@
 import { readFileSync, writeFileSync } from 'fs';
 import { basename, dirname, join } from 'path';
 import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
-import { Placeholder } from "../dist/src/ReusableServerlessTemplate";
 
 export type Token = {
     index: number;
@@ -22,6 +21,7 @@ export type Placeholder = {
 }
 export type Variable = Placeholder & {
     paramName: string
+    defaultValue: string
 }
 export type TFile = Placeholder & {
     filePath: string,
@@ -31,10 +31,10 @@ export type TFile = Placeholder & {
 /**
  * A stateless template processor.
  */
-export class ReusableServerlessTemplate {
+export class FragmentsProcessor {
 
     private static readonly VAR_START_TOKENS = [TokenType.VAR_OPT_START, TokenType.VAR_SELF_START];
-    private static readonly START_TOKENS = ReusableServerlessTemplate.VAR_START_TOKENS.concat(TokenType.T_FILE_START);
+    private static readonly START_TOKENS = FragmentsProcessor.VAR_START_TOKENS.concat(TokenType.T_FILE_START);
 
 
     static lastTokenType(lastStartTokens: Array<Token>): TokenType | undefined {
@@ -76,7 +76,8 @@ export class ReusableServerlessTemplate {
                 case TokenType.VAR_END:
                     if (this.VAR_START_TOKENS.includes(this.lastTokenType(lastStartTokens))) {
                         const lastVarStartToken = lastStartTokens.pop();
-                        if (this.matchParameter(value, lastVarStartToken.index, currentToken.index, params)) {
+                        //it's important to detect if the variable will be replaced, in that case the next token matching will start from the variable start token, otherwise from the currently scanned index
+                        if(this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
                             value = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
                             currentToken = lastVarStartToken;  //reset the index to the start of the variable
                         }
@@ -100,7 +101,7 @@ export class ReusableServerlessTemplate {
         const tFile = this.extractTFile(value, startIndex, endIndex);
 
         const absoluteFilePath = join(dir, tFile.filePath);
-        console.log(`Loading ${basename(absoluteFilePath)}(${this.mapToString(tFile.params)}), indented ${indentation.length}x' ', `);
+        console.log(`Loading ${basename(dirname(absoluteFilePath))}/${basename(absoluteFilePath)}(${this.mapToString(tFile.params)}), indented ${indentation.length}x' ', `);
 
         let fileContent = readFileSync(absoluteFilePath, 'utf8');
 
@@ -118,32 +119,40 @@ export class ReusableServerlessTemplate {
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
         const tfilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);
-        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)(:(.+))?}/.exec(tfilePlaceholder);
+        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)\s*(:[\s]*(.+)[\s]*)?}/gm.exec(tfilePlaceholder);
         return {placeholder, filePath, params: this.toMap(params)};
+    }
+
+    static canReplace(value: string, startIndex: number, endIndex: number, params: Map<string, string>): boolean {
+        const variable = this.extractVariable(value, startIndex, endIndex);
+        return params.has(variable.paramName) || !!variable.defaultValue;
     }
 
     static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
         const variable = this.extractVariable(value, startIndex, endIndex);
+
+        if(!variable){
+            return value;
+        }
+
         const paramValue = params.get(variable.paramName);
 
         if (paramValue) {
             console.log(`\t ${variable.placeholder} => ${paramValue}`);
             value = value.replace(variable.placeholder, paramValue);
+        } else if (variable.defaultValue) {
+            console.log(`\t ${variable.placeholder} => default: ${variable.defaultValue}`);
+            value = value.replace(variable.placeholder, variable.defaultValue);
         }
 
         return value;
     }
 
-    static matchParameter(value: string, startIndex: number, endIndex: number, params: Map<string, string>): boolean {
-        const variable = this.extractVariable(value, startIndex, endIndex);
-        return params.has(variable.paramName);
-
-    }
-
-    static extractVariable(value: string, startIndex: number, endIndex: number): Variable {
-        const placeholder = value.substr(startIndex, endIndex - startIndex + 1);   //fullname ${opt:stage,test}
-        const paramName = /\${(opt|self):([^,]+)(,.+)?}/.exec(placeholder)[2];  //param name stage
-        return {placeholder, paramName};
+    static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
+        const placeholderValue = value.substr(startIndex, endIndex - startIndex + 1);
+        //match a placeholder e.g. ${opt:stage, test}
+        const [placeholder, , paramName, , defaultValue] = /\${(opt|self):([^,]+)(\s*,\s*(\S+)\s*)?}/gm.exec(placeholderValue);
+        return placeholder ? {placeholder, paramName, defaultValue} : undefined;
     }
 
     static nextToken(value: string, currentToken: Token, lastStartTokens: Array<Token> = [], filterTypes?: Array<TokenType>): Token | undefined {
@@ -235,8 +244,8 @@ export class ReusableServerlessTemplate {
  * @param debug print the resolved template before converting to Yaml object
  * @return yaml object
  */
-export const load = function (filePath: string, params?: Map<string, string>, debug: boolean = true): string {
-    const resolvedTemplate = ReusableServerlessTemplate.resolveTokensRecursive(dirname(filePath), readFileSync(filePath, 'utf8'), params);
+export const load = function (filePath: string, params?: Map<string, string>, debug: boolean = false): string {
+    const resolvedTemplate = FragmentsProcessor.resolveTokensRecursive(dirname(filePath), readFileSync(filePath, 'utf8'), params);
 
     if (debug) {
         const spaceCount = (lines: Array<string>) => lines.length.toString().length + 1;
@@ -244,14 +253,15 @@ export const load = function (filePath: string, params?: Map<string, string>, de
             .split('\n')
             .map((line, index, lines) => `${(index + 1).toString().padStart(spaceCount(lines))}:${line}`) //add line numbers so we can easily find a serverless exception source
             .join('\n'));
-        writeFileSync(`${dirname(filePath)}/serverless.yml`,
-            `# Generated by https://www.npmjs.com/package/reusable-serverless-template.
+    }
+
+    writeFileSync(`${dirname(filePath)}/serverless.yml`,
+        `# Generated by https://www.npmjs.com/package/reusable-serverless-template.
 # Do not edit this file directly but serverless.js.
 
 ${resolvedTemplate}
-`
-        );
-    }
+`);
+
     return yamlLoad(resolvedTemplate);
 };
 

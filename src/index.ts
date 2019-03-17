@@ -1,2 +1,2 @@
-export { ReusableServerlessTemplate, TokenType, Token } from './ReusableServerlessTemplate';
-export { load, dump } from './ReusableServerlessTemplate';
+export { FragmentsProcessor, TokenType, Token } from './FragmentsProcessor';
+export { load, dump } from './FragmentsProcessor';

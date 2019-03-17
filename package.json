@@ -1,6 +1,6 @@
 {
-  "name": "reusable-serverless-template",
-  "version": "1.2.1",
+  "name": "serverless-fragments",
+  "version": "2.0.0",
   "main": "dist/src/index.js",
   "scripts": {
     "test": "jest",
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dusanzahoransky/reusable-serverless-template"
+    "url": "https://github.com/dusanzahoransky/serverless-fragments"
   },
   "keywords": [
     "serverless",
