@@ -1,5 +1,5 @@
 {
-  "name": "reusable-serverless-template",
+  "name": "serverless-fragments",
   "version": "1.2.1",
   "main": "dist/src/index.js",
   "scripts": {
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/dusanzahoransky/reusable-serverless-template"
+    "url": "https://github.com/dusanzahoransky/serverless-fragments"
   },
   "keywords": [
     "serverless",
