@@ -16,9 +16,7 @@ Loaded yaml object can be thus exported and processed by serverless framework:
 module.exports = slsFragments.load(path.join(__dirname, 'serverless/serverless.core.yml', new Map[['version':'1.0.1']]));
  ```
 
-A scope of the parameters passed to template#load function, as well as _tfile_ parameters, is the parent file only. 
-There are not propagated to nested templates to avoid bugs related to missing nested template parameters, which are 
-wrongly resolved by parent parameters. 
+Parameters including process arguments passed to serverless are passed recursively to child fragments loaded by tfile.
 
 ## Placeholders
 

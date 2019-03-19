@@ -60,7 +60,7 @@ export class FragmentsProcessor {
                 case TokenType.T_FILE_END:
                     if (this.lastTokenType(lastStartTokens) === TokenType.T_FILE_START) {
                         const lastTFileStartToken = lastStartTokens.pop();
-                        value = this.replaceTFile(dir, value, lastTFileStartToken.index, currentToken.index, lastTFileStartToken.indentation);
+                        value = this.replaceTFile(dir, value, lastTFileStartToken.index, currentToken.index, lastTFileStartToken.indentation, params);
                         currentToken = lastTFileStartToken;
                     }
                     break;
@@ -97,11 +97,12 @@ export class FragmentsProcessor {
      * file name can not contain characters '}', ':'
      * parameter names can not contain characters ',' or '='
      */
-    static replaceTFile(dir: string, value: string, startIndex: number, endIndex: number, indentation: string): string {
+    static replaceTFile(dir: string, value: string, startIndex: number, endIndex: number, indentation: string, params: Map<string, string>): string {
         const tFile = this.extractTFile(value, startIndex, endIndex);
 
         const absoluteFilePath = join(dir, tFile.filePath);
-        console.log(`Loading ${basename(dirname(absoluteFilePath))}/${basename(absoluteFilePath)}(${this.mapToString(tFile.params)}), indented ${indentation.length}x' ', `);
+        const mergedParams = new Map([...params, ...tFile.params]);
+        console.log(`Loading ${basename(dirname(absoluteFilePath))}/${basename(absoluteFilePath)}(${this.mapToString(mergedParams)}), indented ${indentation.length}x' ', `);
 
         let fileContent = readFileSync(absoluteFilePath, 'utf8');
 
@@ -114,7 +115,7 @@ export class FragmentsProcessor {
             .map((value, index) => index != 0 ? indentation + value : value)
             .join('\n');
 
-        return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, tFile.params));
+        return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
     }
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
@@ -227,7 +228,7 @@ export class FragmentsProcessor {
         return paramMap;
     }
 
-    private static mapToString(params: Map<string, string>): string {
+    static mapToString(params: Map<string, string>): string {
         return Array.from(params.entries()).map(value => value.join("=")).join(",");
     };
 
@@ -244,7 +245,19 @@ export class FragmentsProcessor {
  * @param debug print the resolved template before converting to Yaml object
  * @return yaml object
  */
-export const load = function (filePath: string, params?: Map<string, string>, debug: boolean = false): string {
+export const load = function (filePath: string, params: Map<string, string> = new Map(), debug: boolean = false): string {
+
+    let paramName;
+    for(const arg of process.argv){
+        if(arg.startsWith('--')){
+            paramName = arg.substring(2);
+        } else if(paramName){
+            params.set(paramName, arg);
+            paramName = undefined;
+        }
+    }
+
+    console.log(`Processing ${filePath}, params (${FragmentsProcessor.mapToString(params)})`);
     const resolvedTemplate = FragmentsProcessor.resolveTokensRecursive(dirname(filePath), readFileSync(filePath, 'utf8'), params);
 
     if (debug) {
