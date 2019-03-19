@@ -171,3 +171,4 @@ from processing
 * _2.0.0_ rename to Serverless Fragments
     * process default variable values
     * support multiline tfile declaration
+* _2.1.0_ pass parameters to fragments recursively    
