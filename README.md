@@ -77,7 +77,9 @@ parameter. Compare to serverless defaults, also numeric values are supported
  * a serverless custom variables ``${self:service.name}``
  * multiple variables on a single line ``${self:service.name}-${opt:stage}``
  * nested variables ``${self:${opt:env}.tableName}``
- * a variables with a default ```` 
+ * a variables with a default ``${opt:stage, 'test'}`` 
+
+*Note: tfile, opt and custom token support an optional colon after the declaration which is removed once there are resolved by the engine. The reason for it is to avoid validation error by yaml formatter in VSCode which otherwise reports the lines with tokens only as invalid mapping entry. This is a valid syntax too ``${tfile:config/${opt:stage}.json}:``*
  
 ### Comments
 
@@ -86,7 +88,7 @@ Use # for line comments, anything between the # and end of line will be skipped 
 **Usage:**
  * comment out fragments ``# ${tfile:iamRoleStatements/dynamoDbFull.yml:tableName=entity}``
  * add comments to the fragments``# full entity table and all it's indexes access for the lambda``
-     
+    
 ## Examples
 
 ```

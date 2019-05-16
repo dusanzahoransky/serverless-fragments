@@ -69,6 +69,16 @@ describe("FragmentsProcessor replaceVariable", () =>{
         expect(resolved).toBe(expectedContent);
     });
 
+    it("optional colon after token", async () => {
+        const content = `\${opt:stage}:`;
+        const params = new Map([['stage', 'test']]);
+
+        const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
+
+        const expectedContent = `test`;
+        expect(resolved).toBe(expectedContent);
+    });
+
 });
 
 describe("FragmentsProcessor resolveTokensRecursive", () => {

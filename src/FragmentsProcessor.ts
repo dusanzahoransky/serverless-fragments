@@ -115,7 +115,12 @@ export class FragmentsProcessor {
             .map((value, index) => index != 0 ? indentation + value : value)
             .join('\n');
 
-        return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
+        const replaced = value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
+        return this.chopLastColon(replaced);
+    }
+
+    private static chopLastColon(value: string) {
+        return value.endsWith(':') ? value.substring(0, value.length - 1) : value;
     }
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
@@ -146,7 +151,7 @@ export class FragmentsProcessor {
             value = value.replace(variable.placeholder, variable.defaultValue);
         }
 
-        return value;
+        return this.chopLastColon(value);
     }
 
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
