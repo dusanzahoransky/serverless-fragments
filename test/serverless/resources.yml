@@ -1,0 +1,4 @@
+resources:
+  Resources:
+    #SQS Ota1OrderStatusUpdated
+    ${tfile:sqsQueue.yml:queueName=ApiOta1OrderStatusUpdated,delaySeconds=0}:

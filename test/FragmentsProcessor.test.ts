@@ -7,7 +7,7 @@ function serverlessDir() {
     return join(__dirname, 'serverless');
 }
 
-describe("FragmentsProcessor replaceVariable", () =>{
+describe("FragmentsProcessor replaceVariable", () => {
 
     it("self variable", async () => {
         const content = `\${self:service.name}`;
@@ -63,19 +63,9 @@ describe("FragmentsProcessor replaceVariable", () =>{
         const content = `0123\${opt:visibilityTimeout}5432`;
         const params = new Map([['visibilityTimeout', '-value-']]);
 
-        const resolved = FragmentsProcessor.replaceVariable(content, 4, content.length-5, params);
+        const resolved = FragmentsProcessor.replaceVariable(content, 4, content.length - 5, params);
 
         const expectedContent = `0123-value-5432`;
-        expect(resolved).toBe(expectedContent);
-    });
-
-    it("optional colon after token", async () => {
-        const content = `\${opt:stage}:`;
-        const params = new Map([['stage', 'test']]);
-
-        const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
-
-        const expectedContent = `test`;
         expect(resolved).toBe(expectedContent);
     });
 
@@ -273,14 +263,14 @@ runtime: \${opt:runtime}`;
     it("multiline tfile", async () => {
 
         const content =
-`\${tfile:resources/provider.yml:
+            `\${tfile:resources/provider.yml:
     region=ap-southeast-2
 }`;
 
         const resolved = FragmentsProcessor.resolveTokensRecursive(serverlessDir(), content);
 
         const expectedContent =
-`region: ap-southeast-2
+            `region: ap-southeast-2
 runtime: \${opt:runtime}`;
 
         expect(resolved).toBe(expectedContent);
@@ -299,7 +289,7 @@ describe("FragmentsProcessor fragments resolving", () => {
         expect(resolved).toBeDefined();
     });
 
-    it("load a file without parameters", async () => {
+    it("load a file with parameters", async () => {
 
         const content = readFileSync(join(serverlessDir(), 'serverless.core.yml'), 'utf8');
         const params = new Map([['name', 'webhook'], ['profile', 'test']]);
@@ -325,22 +315,46 @@ custom:
         expect(resolved).toBe(expectedContent);
     });
 
+
+    it("load a file recursive", async () => {
+
+        const content = readFileSync(join(serverlessDir(), 'resources.yml'), 'utf8');
+
+        const resolved = FragmentsProcessor.resolveTokensRecursive(serverlessDir(), content);
+
+        const expectedContent =
+            `resources:
+  Resources:
+    #SQS Ota1OrderStatusUpdated
+    ApiOta1OrderStatusUpdated:
+      Type: "AWS::SQS::Queue"
+      Properties:
+        QueueName: \${self:provider.stage}-ApiOta1OrderStatusUpdated
+        DelaySeconds: 0
+        VisibilityTimeout: 30
+        RedrivePolicy:
+          deadLetterTargetArn:
+            Fn::GetAtt: [ DeadApiOta1OrderStatusUpdated, "Arn" ]
+          maxReceiveCount: 1`;
+        expect(resolved).toBe(expectedContent);
+    });
+
 });
 
 describe("FragmentsProcessor string tokenizing", () => {
 
     it("match the start tokens", () => {
         let token = FragmentsProcessor.nextToken('0123${opt:foo', undefined);
-        expect(token).toEqual({index: 4, type: TokenType.VAR_OPT_START});
+        expect(token).toEqual({ index: 4, type: TokenType.VAR_OPT_START });
 
         token = FragmentsProcessor.nextToken('0123${self:foo', undefined);
-        expect(token).toEqual({index: 4, type: TokenType.VAR_SELF_START});
+        expect(token).toEqual({ index: 4, type: TokenType.VAR_SELF_START });
     });
 
     it("match the end token", () => {
-        const lastToken = {index: 0, type: TokenType.VAR_OPT_START};
+        const lastToken = { index: 0, type: TokenType.VAR_OPT_START };
         let token = FragmentsProcessor.nextToken('0123}', lastToken, [lastToken]);
-        expect(token).toEqual({index: 4, type: TokenType.VAR_END});
+        expect(token).toEqual({ index: 4, type: TokenType.VAR_END });
     });
 
     it("do not match a token", () => {
@@ -353,29 +367,29 @@ describe("FragmentsProcessor string tokenizing", () => {
 
 
     it("match start tokens after index", () => {
-        let token = FragmentsProcessor.nextToken('0123${opt:foo', {index: 4, type: TokenType.VAR_END});
+        let token = FragmentsProcessor.nextToken('0123${opt:foo', { index: 4, type: TokenType.VAR_END });
         expect(token).toBeUndefined();
 
-        token = FragmentsProcessor.nextToken('0123${opt:foo', {index: 3, type: TokenType.VAR_END});
-        expect(token).toEqual({index: 4, type: TokenType.VAR_OPT_START});
+        token = FragmentsProcessor.nextToken('0123${opt:foo', { index: 3, type: TokenType.VAR_END });
+        expect(token).toEqual({ index: 4, type: TokenType.VAR_OPT_START });
 
 
-        token = FragmentsProcessor.nextToken('0123${opt:foo${self', {index: 4, type: TokenType.VAR_END});
-        expect(token).toEqual({index: 13, type: TokenType.VAR_SELF_START});
+        token = FragmentsProcessor.nextToken('0123${opt:foo${self', { index: 4, type: TokenType.VAR_END });
+        expect(token).toEqual({ index: 13, type: TokenType.VAR_SELF_START });
     });
 
     it("match indentation in front of tfile start", () => {
         let token = FragmentsProcessor.nextToken('  ${tfile', undefined);
-        expect(token).toEqual({index: 2, type: TokenType.T_FILE_START, indentation: '  '});
+        expect(token).toEqual({ index: 2, type: TokenType.T_FILE_START, indentation: '  ' });
 
         token = FragmentsProcessor.nextToken('${tfile', undefined);
-        expect(token).toEqual({index: 0, type: TokenType.T_FILE_START, indentation: ''});
+        expect(token).toEqual({ index: 0, type: TokenType.T_FILE_START, indentation: '' });
 
         const content =
             `
   \${tfile`;
         token = FragmentsProcessor.nextToken(content, undefined);
-        expect(token).toEqual({index: 3, type: TokenType.T_FILE_START, indentation: '  '});
+        expect(token).toEqual({ index: 3, type: TokenType.T_FILE_START, indentation: '  ' });
     });
 
 });

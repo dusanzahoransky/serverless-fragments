@@ -1,0 +1,10 @@
+${opt:queueName}:
+  Type: "AWS::SQS::Queue"
+  Properties:
+    QueueName: ${self:provider.stage}-${opt:queueName}
+    DelaySeconds: ${opt:delaySeconds, 0}
+    VisibilityTimeout: ${opt:visibilityTimeout, 30}
+    RedrivePolicy:
+      deadLetterTargetArn:
+        Fn::GetAtt: [ Dead${opt:queueName}, "Arn" ]
+      maxReceiveCount: 1

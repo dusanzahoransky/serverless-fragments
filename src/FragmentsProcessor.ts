@@ -77,7 +77,7 @@ export class FragmentsProcessor {
                     if (this.VAR_START_TOKENS.includes(this.lastTokenType(lastStartTokens))) {
                         const lastVarStartToken = lastStartTokens.pop();
                         //it's important to detect if the variable will be replaced, in that case the next token matching will start from the variable start token, otherwise from the currently scanned index
-                        if(this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
+                        if (this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
                             value = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
                             currentToken = lastVarStartToken;  //reset the index to the start of the variable
                         }
@@ -115,18 +115,13 @@ export class FragmentsProcessor {
             .map((value, index) => index != 0 ? indentation + value : value)
             .join('\n');
 
-        const replaced = value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
-        return this.chopLastColon(replaced);
-    }
-
-    private static chopLastColon(value: string) {
-        return value.endsWith(':') ? value.substring(0, value.length - 1) : value;
+        return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
     }
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
         const tfilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);
-        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)\s*(:[\s]*(.+)[\s]*)?}/gm.exec(tfilePlaceholder);
-        return {placeholder, filePath, params: this.toMap(params)};
+        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)\s*(:[\s]*(.+)[\s]*)?}:?/gm.exec(tfilePlaceholder);
+        return { placeholder, filePath, params: this.toMap(params) };
     }
 
     static canReplace(value: string, startIndex: number, endIndex: number, params: Map<string, string>): boolean {
@@ -137,7 +132,7 @@ export class FragmentsProcessor {
     static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
         const variable = this.extractVariable(value, startIndex, endIndex);
 
-        if(!variable){
+        if (!variable) {
             return value;
         }
 
@@ -151,14 +146,14 @@ export class FragmentsProcessor {
             value = value.replace(variable.placeholder, variable.defaultValue);
         }
 
-        return this.chopLastColon(value);
+        return value;
     }
 
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
         const placeholderValue = value.substr(startIndex, endIndex - startIndex + 1);
         //match a placeholder e.g. ${opt:stage, test}
         const [placeholder, , paramName, , defaultValue] = /\${(opt|self):([^,]+)(\s*,\s*(\S+)\s*)?}/gm.exec(placeholderValue);
-        return placeholder ? {placeholder, paramName, defaultValue} : undefined;
+        return placeholder ? { placeholder, paramName, defaultValue } : undefined;
     }
 
     static nextToken(value: string, currentToken: Token, lastStartTokens: Array<Token> = [], filterTypes?: Array<TokenType>): Token | undefined {
@@ -185,7 +180,10 @@ export class FragmentsProcessor {
                     }
                     const type = this.lastTokenType(lastStartTokens) === TokenType.T_FILE_START ? TokenType.T_FILE_END : TokenType.VAR_END;
                     if (!filterTypes || filterTypes.includes(type)) {
-                        return {index, type};
+                        if (type === TokenType.T_FILE_END && value.charAt(index + 1) === ':') {
+                            return { index: index + 1, type };
+                        }
+                        return { index, type };
                     }
                     break;
                 case '$':
@@ -195,19 +193,19 @@ export class FragmentsProcessor {
                     const lookahead = value.substring(index);
                     if (lookahead.startsWith('${opt')) {
                         if (!filterTypes || filterTypes.includes(TokenType.VAR_OPT_START)) {
-                            return {index, type: TokenType.VAR_OPT_START};
+                            return { index, type: TokenType.VAR_OPT_START };
                         }
                     }
                     if (lookahead.startsWith('${self')) {
                         if (!filterTypes || filterTypes.includes(TokenType.VAR_SELF_START)) {
-                            return {index, type: TokenType.VAR_SELF_START};
+                            return { index, type: TokenType.VAR_SELF_START };
                         }
                     }
                     if (lookahead.startsWith('${tfile')) {
                         if (!filterTypes || filterTypes.includes(TokenType.T_FILE_START)) {
                             const currentLine = value.substring(lastNewLineIndex + 1, index);
                             const indentation = currentLine.match(/[\t ]*/)[0];
-                            return {index, type: TokenType.T_FILE_START, indentation: (indentation ? indentation : '')};
+                            return { index, type: TokenType.T_FILE_START, indentation: (indentation ? indentation : '') };
                         }
                     }
                     break;
@@ -253,10 +251,10 @@ export class FragmentsProcessor {
 export const load = function (filePath: string, params: Map<string, string> = new Map(), debug: boolean = false): string {
 
     let paramName;
-    for(const arg of process.argv){
-        if(arg.startsWith('--')){
+    for (const arg of process.argv) {
+        if (arg.startsWith('--')) {
             paramName = arg.substring(2);
-        } else if(paramName){
+        } else if (paramName) {
             params.set(paramName, arg);
             paramName = undefined;
         }
