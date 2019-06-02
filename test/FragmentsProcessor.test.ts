@@ -203,6 +203,36 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         expect(resolved).toBe(expectedContent);
     });
 
+    it("variable with empty default", async () => {
+
+        const content = `stage: \${opt:stage, }`;
+
+        const resolved = FragmentsProcessor.resolveTokensRecursive('', content);
+
+        const expectedContent = `stage: `;
+        expect(resolved).toBe(expectedContent);
+    });
+
+    it("variable without default", async () => {
+
+        const content = `stage: \${opt:stage}`;
+
+        const resolved = FragmentsProcessor.resolveTokensRecursive('', content);
+
+        const expectedContent = `stage: \${opt:stage}`;
+        expect(resolved).toBe(expectedContent);
+    });
+
+    it("variable with default followed by variable", async () => {
+
+        const content = `\${opt:serviceName, }\${opt:tableName}`;
+        const params = new Map([['tableName', 'webhook']]);
+        const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
+
+        const expectedContent = `webhook`;
+        expect(resolved).toBe(expectedContent);
+    });
+
     it("missing variable value with default", async () => {
 
         const content = `stage: \${opt:stage, 'test'}`;

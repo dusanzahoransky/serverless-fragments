@@ -80,6 +80,7 @@ export class FragmentsProcessor {
                         if (this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
                             value = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
                             currentToken = lastVarStartToken;  //reset the index to the start of the variable
+                            currentToken.index = currentToken.index - 1; //in a case when variable is replaced with an empty value
                         }
                     }
                     break;
@@ -126,7 +127,7 @@ export class FragmentsProcessor {
 
     static canReplace(value: string, startIndex: number, endIndex: number, params: Map<string, string>): boolean {
         const variable = this.extractVariable(value, startIndex, endIndex);
-        return params.has(variable.paramName) || !!variable.defaultValue;
+        return params.has(variable.paramName) || variable.defaultValue != undefined;
     }
 
     static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
@@ -141,7 +142,7 @@ export class FragmentsProcessor {
         if (paramValue) {
             console.log(`\t ${variable.placeholder} => ${paramValue}`);
             value = value.replace(variable.placeholder, paramValue);
-        } else if (variable.defaultValue) {
+        } else if (variable.defaultValue != undefined) {
             console.log(`\t ${variable.placeholder} => default: ${variable.defaultValue}`);
             value = value.replace(variable.placeholder, variable.defaultValue);
         }
@@ -152,7 +153,7 @@ export class FragmentsProcessor {
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
         const placeholderValue = value.substr(startIndex, endIndex - startIndex + 1);
         //match a placeholder e.g. ${opt:stage, test}
-        const [placeholder, , paramName, , defaultValue] = /\${(opt|self):([^,]+)(\s*,\s*(\S+)\s*)?}/gm.exec(placeholderValue);
+        const [placeholder, , paramName, , defaultValue] = /\${(opt|self):([^,]+)(\s*,\s*(\S*)\s*)?}/gm.exec(placeholderValue);
         return placeholder ? { placeholder, paramName, defaultValue } : undefined;
     }
 
