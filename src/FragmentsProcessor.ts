@@ -1,12 +1,12 @@
-import { readFileSync, writeFileSync } from 'fs';
-import { basename, dirname, join } from 'path';
-import { dump as yamlDump, load as yamlLoad } from 'js-yaml';
+import { readFileSync, writeFileSync } from "fs";
+import { basename, dirname, join } from "path";
+import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
 export type Token = {
     index: number;
     type: TokenType;
-    indentation?: string;   //only for tfile start token
-}
+    indentation?: string;   // only for tfile start token
+};
 
 export enum TokenType {
     VAR_OPT_START = "VAR_OPT_START",
@@ -18,15 +18,15 @@ export enum TokenType {
 
 export type Placeholder = {
     placeholder: string
-}
+};
 export type Variable = Placeholder & {
     paramName: string
     defaultValue: string
-}
+};
 export type TFile = Placeholder & {
     filePath: string,
     params: Map<string, string>
-}
+};
 
 /**
  * A stateless template processor.
@@ -76,11 +76,11 @@ export class FragmentsProcessor {
                 case TokenType.VAR_END:
                     if (this.VAR_START_TOKENS.includes(this.lastTokenType(lastStartTokens))) {
                         const lastVarStartToken = lastStartTokens.pop();
-                        //it's important to detect if the variable will be replaced, in that case the next token matching will start from the variable start token, otherwise from the currently scanned index
+                        // it's important to detect if the variable will be replaced, in that case the next token matching will start from the variable start token, otherwise from the currently scanned index
                         if (this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
                             value = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
-                            currentToken = lastVarStartToken;  //reset the index to the start of the variable
-                            currentToken.index = currentToken.index - 1; //in a case when variable is replaced with an empty value
+                            currentToken = lastVarStartToken;  // reset the index to the start of the variable
+                            currentToken.index = currentToken.index - 1; // in a case when variable is replaced with an empty value
                         }
                     }
                     break;
@@ -105,16 +105,16 @@ export class FragmentsProcessor {
         const mergedParams = new Map([...params, ...tFile.params]);
         console.log(`Loading ${basename(dirname(absoluteFilePath))}/${basename(absoluteFilePath)}(${this.mapToString(mergedParams)}), indented ${indentation.length}x' ', `);
 
-        let fileContent = readFileSync(absoluteFilePath, 'utf8');
+        let fileContent = readFileSync(absoluteFilePath, "utf8");
 
-        //convert json files content to yaml which allows us to e.g. keep configuration as JSON to be easily readable from js code as well
-        if (tFile.filePath.endsWith('.json')) {
+        // convert json files content to yaml which allows us to e.g. keep configuration as JSON to be easily readable from js code as well
+        if (tFile.filePath.endsWith(".json")) {
             fileContent = yamlDump(JSON.parse(fileContent));
         }
 
-        fileContent = fileContent.split('\n')
+        fileContent = fileContent.split("\n")
             .map((value, index) => index != 0 ? indentation + value : value)
-            .join('\n');
+            .join("\n");
 
         return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
     }
@@ -152,7 +152,7 @@ export class FragmentsProcessor {
 
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
         const placeholderValue = value.substr(startIndex, endIndex - startIndex + 1);
-        //match a placeholder e.g. ${opt:stage, test}
+        // match a placeholder e.g. ${opt:stage, test}
         const [placeholder, , paramName, , defaultValue] = /\${(opt|self):([^,]+)(\s*,\s*(\S*)\s*)?}/gm.exec(placeholderValue);
         return placeholder ? { placeholder, paramName, defaultValue } : undefined;
     }
@@ -165,14 +165,14 @@ export class FragmentsProcessor {
 
         for (let index = startIndex; index < value.length; index++) {
             switch (value.charAt(index)) {
-                case '\n':
+                case "\n":
                     lastNewLineIndex = index;
                     insideOfComment = false;
                     break;
-                case '#':
+                case "#":
                     insideOfComment = true;
                     break;
-                case '}':
+                case "}":
                     if (insideOfComment) {
                         break;
                     }
@@ -181,32 +181,32 @@ export class FragmentsProcessor {
                     }
                     const type = this.lastTokenType(lastStartTokens) === TokenType.T_FILE_START ? TokenType.T_FILE_END : TokenType.VAR_END;
                     if (!filterTypes || filterTypes.includes(type)) {
-                        if (type === TokenType.T_FILE_END && value.charAt(index + 1) === ':') {
+                        if (type === TokenType.T_FILE_END && value.charAt(index + 1) === ":") {
                             return { index: index + 1, type };
                         }
                         return { index, type };
                     }
                     break;
-                case '$':
+                case "$":
                     if (insideOfComment) {
                         break;
                     }
                     const lookahead = value.substring(index);
-                    if (lookahead.startsWith('${opt')) {
+                    if (lookahead.startsWith("${opt")) {
                         if (!filterTypes || filterTypes.includes(TokenType.VAR_OPT_START)) {
                             return { index, type: TokenType.VAR_OPT_START };
                         }
                     }
-                    if (lookahead.startsWith('${self')) {
+                    if (lookahead.startsWith("${self")) {
                         if (!filterTypes || filterTypes.includes(TokenType.VAR_SELF_START)) {
                             return { index, type: TokenType.VAR_SELF_START };
                         }
                     }
-                    if (lookahead.startsWith('${tfile')) {
+                    if (lookahead.startsWith("${tfile")) {
                         if (!filterTypes || filterTypes.includes(TokenType.T_FILE_START)) {
                             const currentLine = value.substring(lastNewLineIndex + 1, index);
                             const indentation = currentLine.match(/[\t ]*/)[0];
-                            return { index, type: TokenType.T_FILE_START, indentation: (indentation ? indentation : '') };
+                            return { index, type: TokenType.T_FILE_START, indentation: (indentation ? indentation : "") };
                         }
                     }
                     break;
@@ -219,7 +219,7 @@ export class FragmentsProcessor {
      * E.g. 'foo =bar,stage= test' will become a Map { '(foo' => 'bar', 'stage' => 'test)' }
      * @param params comma-separated params with name and value
      */
-    static toMap(params: string = ''): Map<string, string> {
+    static toMap(params: string = ""): Map<string, string> {
         const paramMap = new Map();
 
         params.split(",").forEach(nameValuePair => {
@@ -234,7 +234,7 @@ export class FragmentsProcessor {
 
     static mapToString(params: Map<string, string>): string {
         return Array.from(params.entries()).map(value => value.join("=")).join(",");
-    };
+    }
 
 }
 
@@ -253,7 +253,7 @@ export const load = function (filePath: string, params: Map<string, string> = ne
 
     let paramName;
     for (const arg of process.argv) {
-        if (arg.startsWith('--')) {
+        if (arg.startsWith("--")) {
             paramName = arg.substring(2);
         } else if (paramName) {
             params.set(paramName, arg);
@@ -262,18 +262,18 @@ export const load = function (filePath: string, params: Map<string, string> = ne
     }
 
     console.log(`Processing ${filePath}, params (${FragmentsProcessor.mapToString(params)})`);
-    const resolvedTemplate = FragmentsProcessor.resolveTokensRecursive(dirname(filePath), readFileSync(filePath, 'utf8'), params);
+    const resolvedTemplate = FragmentsProcessor.resolveTokensRecursive(dirname(filePath), readFileSync(filePath, "utf8"), params);
 
     if (debug) {
         const spaceCount = (lines: Array<string>) => lines.length.toString().length + 1;
         console.log(resolvedTemplate
-            .split('\n')
-            .map((line, index, lines) => `${(index + 1).toString().padStart(spaceCount(lines))}:${line}`) //add line numbers so we can easily find a serverless exception source
-            .join('\n'));
+            .split("\n")
+            .map((line, index, lines) => `${(index + 1).toString().padStart(spaceCount(lines))}:${line}`) // add line numbers so we can easily find a serverless exception source
+            .join("\n"));
     }
 
     writeFileSync(`${dirname(filePath)}/serverless.yml`,
-        `# Generated by https://www.npmjs.com/package/reusable-serverless-template.
+        `# Generated by https://www.npmjs.com/package/serverless-fragments.
 # Do not edit this file directly but serverless.js.
 
 ${resolvedTemplate}
