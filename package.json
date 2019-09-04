@@ -1,6 +1,6 @@
 {
   "name": "serverless-fragments",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "main": "dist/src/index.js",
   "scripts": {
     "test": "jest",
