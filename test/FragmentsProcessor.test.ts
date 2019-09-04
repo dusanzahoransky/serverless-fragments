@@ -16,7 +16,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
 
         const expectedContent = `webhookService`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("opt variable", async () => {
@@ -26,7 +26,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
 
         const expectedContent = `test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("numeric variable", async () => {
@@ -36,7 +36,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
 
         const expectedContent = `test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("missing variable value with default", async () => {
@@ -46,7 +46,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
 
         const expectedContent = `'test'`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("missing numeric default", async () => {
@@ -56,7 +56,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 0, content.length, params);
 
         const expectedContent = `60`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("start end index", async () => {
@@ -66,7 +66,7 @@ describe("FragmentsProcessor replaceVariable", () => {
         const resolved = FragmentsProcessor.replaceVariable(content, 4, content.length - 5, params);
 
         const expectedContent = `0123-value-5432`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
 });
@@ -81,7 +81,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `service: webhookService`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("2 variables on a single line", async () => {
@@ -92,7 +92,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `service: webhookService-test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("N variables on a single line", async () => {
@@ -103,7 +103,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `service: webhookService-test-2`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("N variables on a single line, some variables are missing", async () => {
@@ -114,7 +114,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `service: webhookService-\${opt:stage}-2`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("multiline variable with default", async () => {
@@ -126,7 +126,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `stage: test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
 
@@ -138,7 +138,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `name: prod-webhook`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("nested variables and multiple variables", async () => {
@@ -149,7 +149,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `name: prod-webhook-test-2`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("variables combined with tfile", async () => {
@@ -160,7 +160,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive(serverlessDir(), content, params);
 
         const expectedContent = `service: webhookService-2`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("skip commented lines", async () => {
@@ -175,7 +175,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const expectedContent = `service:
             #\${self:service.name}
             test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("custom and opt serverless variables with specified parameters", async () => {
@@ -188,7 +188,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
 
         const expectedContent = `service: webhookService
               env: test`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
 
@@ -200,7 +200,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `stage: prod`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("variable with empty default", async () => {
@@ -210,7 +210,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content);
 
         const expectedContent = `stage: `;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("variable without default", async () => {
@@ -220,7 +220,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content);
 
         const expectedContent = `stage: \${opt:stage}`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("variable with default followed by variable", async () => {
@@ -230,7 +230,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `webhook`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
     it("missing variable value with default", async () => {
@@ -241,7 +241,7 @@ describe("FragmentsProcessor resolveTokensRecursive", () => {
         const resolved = FragmentsProcessor.resolveTokensRecursive('', content, params);
 
         const expectedContent = `stage: 'test'`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 });
 
@@ -259,9 +259,9 @@ describe("FragmentsProcessor tfile resolveTokensRecursive", () => {
         const expectedContent =
             `region: \${opt:region}
 runtime: \${opt:runtime}`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
 
-        console.log(resolved);
+        console.log(resolved.value);
     });
 
     it("skip commented lines", async () => {
@@ -270,9 +270,9 @@ runtime: \${opt:runtime}`;
 
         const resolved = FragmentsProcessor.resolveTokensRecursive(serverlessDir(), content);
 
-        expect(resolved).toBe(content);
+        expect(resolved.value).toBe(content);
 
-        console.log(resolved);
+        console.log(resolved.value);
     });
 
     it("parameters with variable as a value", async () => {
@@ -284,9 +284,9 @@ runtime: \${opt:runtime}`;
         const expectedContent =
             `region: \${opt:serverless-defined-region-variable}
 runtime: \${opt:runtime}`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
 
-        console.log(resolved);
+        console.log(resolved.value);
     });
 
 
@@ -303,9 +303,9 @@ runtime: \${opt:runtime}`;
             `region: ap-southeast-2
 runtime: \${opt:runtime}`;
 
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
 
-        console.log(resolved);
+        console.log(resolved.value);
     });
 
 
@@ -316,7 +316,7 @@ describe("FragmentsProcessor fragments resolving", () => {
     it("load a file without parameters", () => {
         const content = readFileSync(join(serverlessDir(), 'resources/provider.yml'), 'utf8');
         const resolved = FragmentsProcessor.resolveTokensRecursive(serverlessDir(), content);
-        expect(resolved).toBeDefined();
+        expect(resolved.value).toBeDefined();
     });
 
     it("load a file with parameters", async () => {
@@ -342,7 +342,7 @@ provider:
 custom:
   env: TEST
   `;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
 
@@ -366,7 +366,7 @@ custom:
           deadLetterTargetArn:
             Fn::GetAtt: [ DeadApiOta1OrderStatusUpdated, "Arn" ]
           maxReceiveCount: 1`;
-        expect(resolved).toBe(expectedContent);
+        expect(resolved.value).toBe(expectedContent);
     });
 
 });

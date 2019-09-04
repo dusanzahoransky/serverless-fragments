@@ -27,6 +27,10 @@ export type TFile = Placeholder & {
     filePath: string,
     params: Map<string, string>
 };
+export type ReplaceResult = {
+    value: string
+    nextIndex: number
+};
 
 /**
  * A stateless template processor.
@@ -47,47 +51,56 @@ export class FragmentsProcessor {
      * * supports multiple params on s single line e.g. ${opt:foo}-${opt:bar}
      * * supports nested variables ${opt:foo-${opt:bar}}
      */
-    static resolveTokensRecursive(dir: string, value: string, params: Map<string, string> = new Map(), lastStartTokens: Array<Token> = []): string {
+    static resolveTokensRecursive(dir: string, value: string, params: Map<string, string> = new Map(), tokensStack: Array<Token> = [], level: number = 0): ReplaceResult {
 
-        let currentToken = lastStartTokens[lastStartTokens.length - 1];
+        // console.log( `${level}:${FragmentsProcessor.printStack(tokensStack)}`);
 
-        while ((currentToken = this.nextToken(value, currentToken, lastStartTokens))) {
+        let currentToken = tokensStack[tokensStack.length - 1];
+        let previousToken = currentToken;
+
+        while ((currentToken = this.nextToken(value, currentToken, tokensStack))) {
 
             switch (currentToken.type) {
                 case TokenType.T_FILE_START:
-                    lastStartTokens.push(currentToken);
+                    tokensStack.push(currentToken);
                     break;
                 case TokenType.T_FILE_END:
-                    if (this.lastTokenType(lastStartTokens) === TokenType.T_FILE_START) {
-                        const lastTFileStartToken = lastStartTokens.pop();
-                        value = this.replaceTFile(dir, value, lastTFileStartToken.index, currentToken.index, lastTFileStartToken.indentation, params);
-                        currentToken = lastTFileStartToken;
+                    if (this.lastTokenType(tokensStack) === TokenType.T_FILE_START) {
+                        const lastTFileStartToken = tokensStack.pop();
+                        const res = this.replaceTFile(dir, value, lastTFileStartToken.index, currentToken.index, lastTFileStartToken.indentation, params, level);
+                        value = res.value;
+                        currentToken.index = res.nextIndex;
                     }
                     break;
                 case TokenType.VAR_OPT_START:
                 case TokenType.VAR_SELF_START:
-                    if (this.VAR_START_TOKENS.includes(this.lastTokenType(lastStartTokens))) {
-                        lastStartTokens.push(currentToken);
-                        value = this.resolveTokensRecursive(dir, value, params, lastStartTokens);
+                    if (this.VAR_START_TOKENS.includes(this.lastTokenType(tokensStack))) {
+                        tokensStack.push(currentToken);
+                        const res =  this.resolveTokensRecursive(dir, value, params, tokensStack, ++level);
+                        value = res.value;
+                        currentToken.index = res.nextIndex;
+                        --level;
                     } else {
-                        lastStartTokens.push(currentToken);
+                        tokensStack.push(currentToken);
                     }
                     break;
                 case TokenType.VAR_END:
-                    if (this.VAR_START_TOKENS.includes(this.lastTokenType(lastStartTokens))) {
-                        const lastVarStartToken = lastStartTokens.pop();
-                        // it's important to detect if the variable will be replaced, in that case the next token matching will start from the variable start token, otherwise from the currently scanned index
-                        if (this.canReplace(value, lastVarStartToken.index, currentToken.index, params)) {
-                            value = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
-                            currentToken = lastVarStartToken;  // reset the index to the start of the variable
-                            currentToken.index = currentToken.index - 1; // in a case when variable is replaced with an empty value
-                        }
+                    if (this.VAR_START_TOKENS.includes(this.lastTokenType(tokensStack))) {
+                        const lastVarStartToken = tokensStack.pop();
+                        const res = this.replaceVariable(value, lastVarStartToken.index, currentToken.index, params);
+                        value = res.value;
+                        currentToken.index = res.nextIndex;
                     }
                     break;
             }
+            previousToken = currentToken;
         }
 
-        return value;
+        return {value, nextIndex: previousToken ? previousToken.index: 0};
+    }
+
+    private static printStack(tokensStack: Array<Token>): string {
+        return tokensStack.map(t => `${t.type}:${t.index}`).join(', ');
     }
 
     /**
@@ -98,7 +111,7 @@ export class FragmentsProcessor {
      * file name can not contain characters '}', ':'
      * parameter names can not contain characters ',' or '='
      */
-    static replaceTFile(dir: string, value: string, startIndex: number, endIndex: number, indentation: string, params: Map<string, string>): string {
+    static replaceTFile(dir: string, value: string, startIndex: number, endIndex: number, indentation: string, params: Map<string, string>, level: number = 0): ReplaceResult {
         const tFile = this.extractTFile(value, startIndex, endIndex);
 
         const absoluteFilePath = join(dir, tFile.filePath);
@@ -116,38 +129,39 @@ export class FragmentsProcessor {
             .map((value, index) => index != 0 ? indentation + value : value)
             .join("\n");
 
-        return value.replace(tFile.placeholder, this.resolveTokensRecursive(dir, fileContent, mergedParams));
+        const res = this.resolveTokensRecursive(dir, fileContent, mergedParams, [], 0);
+        value = value.replace(tFile.placeholder, res.value);
+
+        return { value, nextIndex: startIndex + res.value.length};
     }
 
     static extractTFile(value: string, startIndex: number, endIndex: number): TFile {
-        const tfilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);
-        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)\s*(:[\s]*(.+)[\s]*)?}:?/gm.exec(tfilePlaceholder);
+        const tFilePlaceholder = value.substr(startIndex, endIndex - startIndex + 1);
+        const [placeholder, filePath, , params] = /\${tfile:([^:}]+)\s*(:[\s]*(.+)[\s]*)?}:?/gm.exec(tFilePlaceholder);
         return { placeholder, filePath, params: this.toMap(params) };
     }
 
-    static canReplace(value: string, startIndex: number, endIndex: number, params: Map<string, string>): boolean {
-        const variable = this.extractVariable(value, startIndex, endIndex);
-        return params.has(variable.paramName) || variable.defaultValue != undefined;
-    }
-
-    static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): string {
+    static replaceVariable(value: string, startIndex: number, endIndex: number, params: Map<string, string>): ReplaceResult {
         const variable = this.extractVariable(value, startIndex, endIndex);
 
         if (!variable) {
-            return value;
+            return {value, nextIndex: endIndex};
         }
 
         const paramValue = params.get(variable.paramName);
 
+        let replacement;
         if (paramValue) {
-            console.log(`\t ${variable.placeholder} => ${paramValue}`);
-            value = value.replace(variable.placeholder, paramValue);
+            replacement = paramValue;
         } else if (variable.defaultValue != undefined) {
-            console.log(`\t ${variable.placeholder} => default: ${variable.defaultValue}`);
-            value = value.replace(variable.placeholder, variable.defaultValue);
+            replacement = variable.defaultValue;
+        } else{
+            return {value, nextIndex: endIndex};
         }
 
-        return value;
+        console.log(`\t ${variable.placeholder} => ${replacement}`);
+        value = value.replace(variable.placeholder, replacement);
+        return {value, nextIndex: startIndex + replacement.length -1};
     }
 
     static extractVariable(value: string, startIndex: number, endIndex: number): Variable | undefined {
@@ -160,13 +174,11 @@ export class FragmentsProcessor {
     static nextToken(value: string, currentToken: Token, lastStartTokens: Array<Token> = [], filterTypes?: Array<TokenType>): Token | undefined {
 
         const startIndex = currentToken ? currentToken.index + 1 : 0;
-        let lastNewLineIndex = -1;
         let insideOfComment = false;
 
         for (let index = startIndex; index < value.length; index++) {
             switch (value.charAt(index)) {
                 case "\n":
-                    lastNewLineIndex = index;
                     insideOfComment = false;
                     break;
                 case "#":
@@ -204,6 +216,7 @@ export class FragmentsProcessor {
                     }
                     if (lookahead.startsWith("${tfile")) {
                         if (!filterTypes || filterTypes.includes(TokenType.T_FILE_START)) {
+                            const lastNewLineIndex = value.substring(0, index).lastIndexOf('\n');
                             const currentLine = value.substring(lastNewLineIndex + 1, index);
                             const indentation = currentLine.match(/[\t ]*/)[0];
                             return { index, type: TokenType.T_FILE_START, indentation: (indentation ? indentation : "") };
@@ -266,7 +279,7 @@ export const load = function (filePath: string, params: Map<string, string> = ne
 
     if (debug) {
         const spaceCount = (lines: Array<string>) => lines.length.toString().length + 1;
-        console.log(resolvedTemplate
+        console.log(resolvedTemplate.value
             .split("\n")
             .map((line, index, lines) => `${(index + 1).toString().padStart(spaceCount(lines))}:${line}`) // add line numbers so we can easily find a serverless exception source
             .join("\n"));
@@ -276,10 +289,10 @@ export const load = function (filePath: string, params: Map<string, string> = ne
         `# Generated by https://www.npmjs.com/package/serverless-fragments.
 # Do not edit this file directly but serverless.js.
 
-${resolvedTemplate}
+${resolvedTemplate.value}
 `);
 
-    return yamlLoad(resolvedTemplate);
+    return yamlLoad(resolvedTemplate.value);
 };
 
 /**
