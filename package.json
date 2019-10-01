@@ -13,8 +13,8 @@
     "dist"
   ],
   "dependencies": {
-    "js-yaml": "^3.12.1",
-    "@rezdy/serverless": "1.8.2"
+    "@rezdy/serverless": "1.8.2",
+    "js-yaml": "^3.13.1"
   },
   "devDependencies": {
     "@types/jest": "^24.0.9",
